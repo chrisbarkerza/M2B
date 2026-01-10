@@ -1,9 +1,10 @@
 {
-  "category": "shopping",
-  "confidence": 95,
+  "category": "admin_urgent",
+  "confidence": 92,
   "context": "personal",
   "location": "md/shopping.md",
   "additional_locations": [
+    "md/admin/personal/urgent.md",
     "md/inbox/inbox-log.md"
   ]
 }

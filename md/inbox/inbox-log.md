@@ -19,6 +19,22 @@ Each entry includes:
 
 <!-- Entries will be appended below in reverse chronological order (newest first) -->
 
+## 2026-01-10 13:35:12 [GitHub Issue #4]
+**Input**: "Add to supplements: NLC and vitamin D
+
+add to dare project: enable scoring system"
+**Classification**: admin_urgent
+**Confidence**: 92%
+**Context**: personal
+**Locations**:
+  - md/shopping.md
+  - md/admin/personal/urgent.md
+  - md/inbox/inbox-log.md
+**Reason**: Two distinct tasks: shopping item (supplements) and project update (dare project scoring)
+
+---
+
+
 ## 2026-01-10 13:20:45 [GitHub Issue #3]
 **Input**: "Test restructure
 
@@ -104,5 +120,19 @@ Buy apples and bananas for testing new /md structure"
   - Category: groceries
   - Context: personal
   - Notes: for testing new /md structure
+
+---
+
+## 2026-01-10 14:35:22
+**Input**: "Add to supplements: NLC and vitamin D\n\nadd to dare project: enable scoring system"
+**Classification**: admin_urgent (multi-item)
+**Confidence**: 92%
+**Locations**:
+  - md/shopping.md (supplements added)
+  - md/admin/personal/urgent.md (task added)
+**Extracted**:
+  - Shopping items: NLC supplement, Vitamin D
+  - Task: Enable scoring system for dare project
+  - Context: personal
 
 ---
