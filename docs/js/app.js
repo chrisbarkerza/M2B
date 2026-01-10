@@ -274,6 +274,201 @@ class UI {
     static setupCapture() {
         const captureBtn = document.getElementById('captureBtn');
         const captureInput = document.getElementById('captureInput');
+        const holdToTalkBtn = document.getElementById('holdToTalkBtn');
+
+        const holdIconMarkup = `
+            <svg class="icon icon-mic" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+        `;
+
+        const buildHoldButtonMarkup = (label, showSpinner = false) => `
+            <span class="btn-icon">${showSpinner ? '<span class="spinner"></span>' : holdIconMarkup}</span>
+            ${label}
+        `;
+
+        const setHoldButtonState = (state) => {
+            if (!holdToTalkBtn) return;
+            if (state === 'recording') {
+                holdToTalkBtn.classList.add('recording');
+                holdToTalkBtn.disabled = false;
+                holdToTalkBtn.setAttribute('aria-pressed', 'true');
+                holdToTalkBtn.innerHTML = buildHoldButtonMarkup('Release to transcribe');
+                return;
+            }
+            if (state === 'transcribing') {
+                holdToTalkBtn.classList.remove('recording');
+                holdToTalkBtn.disabled = true;
+                holdToTalkBtn.setAttribute('aria-pressed', 'false');
+                holdToTalkBtn.innerHTML = buildHoldButtonMarkup('Transcribing...', true);
+                return;
+            }
+
+            holdToTalkBtn.classList.remove('recording');
+            holdToTalkBtn.disabled = false;
+            holdToTalkBtn.setAttribute('aria-pressed', 'false');
+            holdToTalkBtn.innerHTML = buildHoldButtonMarkup('Hold to talk');
+        };
+
+        let mediaRecorder = null;
+        let recordingStream = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let isTranscribing = false;
+        let transcriberPromise = null;
+
+        const supportsVoiceCapture = !!(holdToTalkBtn && navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+
+        const stopStream = () => {
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+                recordingStream = null;
+            }
+        };
+
+        const loadTransformers = async () => {
+            if (window.transformers?.pipeline) {
+                return window.transformers;
+            }
+            try {
+                const module = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
+                return module;
+            } catch (error) {
+                throw new Error('Failed to load speech transcription library.');
+            }
+        };
+
+        const getTranscriber = async () => {
+            if (transcriberPromise) {
+                return transcriberPromise;
+            }
+            transcriberPromise = (async () => {
+                const { pipeline, env } = await loadTransformers();
+                env.allowLocalModels = false;
+                env.useBrowserCache = true;
+                return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+            })();
+            return transcriberPromise;
+        };
+
+        const appendTranscript = (transcript) => {
+            if (!transcript) return;
+            const trimmed = transcript.trim();
+            if (!trimmed) return;
+            captureInput.value = captureInput.value.trim()
+                ? `${captureInput.value.trim()}\n${trimmed}`
+                : trimmed;
+            captureInput.focus();
+        };
+
+        const transcribeAudioBlob = async (blob) => {
+            if (!blob || blob.size === 0) {
+                UI.showToast('No audio captured', 'info');
+                return;
+            }
+            isTranscribing = true;
+            setHoldButtonState('transcribing');
+            try {
+                const transcriber = await getTranscriber();
+                const audioUrl = URL.createObjectURL(blob);
+                const result = await transcriber(audioUrl);
+                URL.revokeObjectURL(audioUrl);
+                const transcript = result?.text || '';
+                if (!transcript.trim()) {
+                    UI.showToast('No speech detected', 'info');
+                    return;
+                }
+                appendTranscript(transcript);
+                UI.showToast('Voice note transcribed', 'success');
+            } catch (error) {
+                transcriberPromise = null;
+                UI.showToast(`Transcription failed: ${error.message}`, 'error');
+            } finally {
+                isTranscribing = false;
+                setHoldButtonState('idle');
+            }
+        };
+
+        const startRecording = async () => {
+            if (!supportsVoiceCapture || isRecording || isTranscribing) return;
+            try {
+                recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(recordingStream);
+                mediaRecorder.addEventListener('dataavailable', (event) => {
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                });
+                mediaRecorder.addEventListener('stop', async () => {
+                    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                    stopStream();
+                    await transcribeAudioBlob(blob);
+                });
+                mediaRecorder.start();
+                isRecording = true;
+                setHoldButtonState('recording');
+            } catch (error) {
+                stopStream();
+                isRecording = false;
+                setHoldButtonState('idle');
+                UI.showToast(`Microphone error: ${error.message}`, 'error');
+            }
+        };
+
+        const stopRecording = () => {
+            if (!isRecording) return;
+            isRecording = false;
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                return;
+            }
+            stopStream();
+            setHoldButtonState('idle');
+        };
+
+        if (holdToTalkBtn) {
+            if (!supportsVoiceCapture) {
+                holdToTalkBtn.disabled = true;
+                holdToTalkBtn.title = 'Voice capture not supported in this browser.';
+            } else {
+                setHoldButtonState('idle');
+                holdToTalkBtn.addEventListener('pointerdown', (event) => {
+                    event.preventDefault();
+                    if (event.pointerId) {
+                        holdToTalkBtn.setPointerCapture?.(event.pointerId);
+                    }
+                    startRecording();
+                });
+                holdToTalkBtn.addEventListener('pointerup', (event) => {
+                    event.preventDefault();
+                    stopRecording();
+                });
+                holdToTalkBtn.addEventListener('pointerleave', (event) => {
+                    event.preventDefault();
+                    stopRecording();
+                });
+                holdToTalkBtn.addEventListener('pointercancel', (event) => {
+                    event.preventDefault();
+                    stopRecording();
+                });
+                holdToTalkBtn.addEventListener('keydown', (event) => {
+                    if (event.key === ' ' || event.key === 'Enter') {
+                        event.preventDefault();
+                        startRecording();
+                    }
+                });
+                holdToTalkBtn.addEventListener('keyup', (event) => {
+                    if (event.key === ' ' || event.key === 'Enter') {
+                        event.preventDefault();
+                        stopRecording();
+                    }
+                });
+            }
+        }
 
         captureBtn.addEventListener('click', async () => {
             const text = captureInput.value.trim();
