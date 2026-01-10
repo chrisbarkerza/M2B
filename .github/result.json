@@ -1,8 +1,8 @@
 {
-  "category": "shopping",
-  "confidence": 95,
+  "category": "project",
+  "confidence": 92,
   "context": "personal",
-  "location": "shopping.md",
+  "location": "projects/personal/active/m2b-pwa-enhancement.md",
   "additional_locations": [
     "inbox/inbox-log.md"
   ]
