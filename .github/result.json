@@ -1,8 +1,8 @@
 {
-  "category": "person",
-  "confidence": 95,
-  "context": "work",
-  "location": "md/people/business/craig-patterson.md",
+  "category": "note",
+  "confidence": 65,
+  "context": "personal",
+  "location": "md/notes/reference/testing-microphone-check.md",
   "additional_locations": [
     "md/inbox/inbox-log.md"
   ]
