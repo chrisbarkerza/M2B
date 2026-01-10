@@ -19,6 +19,21 @@ Each entry includes:
 
 <!-- Entries will be appended below in reverse chronological order (newest first) -->
 
+## 2026-01-10 13:20:45 [GitHub Issue #3]
+**Input**: "Test restructure
+
+Buy apples and bananas for testing new /md structure"
+**Classification**: shopping
+**Confidence**: 95%
+**Context**: personal
+**Locations**:
+  - md/shopping.md
+  - md/inbox/inbox-log.md
+**Reason**: Clear shopping pattern with 'Buy' keyword and list of grocery items
+
+---
+
+
 ## 2026-01-10 12:17:30 [GitHub Issue #2]
 **Input**: "Add to M2B project:
 - PWA to list Md files structured
@@ -75,5 +90,19 @@ Each entry includes:
   - Domain: tech
   - Context: personal
   - Tags: PWA, markdown, voice-capture, web-app
+
+---
+
+
+## 2026-01-10 14:35:22
+**Input**: "Buy apples and bananas for testing new /md structure"
+**Classification**: shopping
+**Confidence**: 95%
+**Location**: shopping.md (Groceries section)
+**Extracted**:
+  - Items: apples, bananas
+  - Category: groceries
+  - Context: personal
+  - Notes: for testing new /md structure
 
 ---
