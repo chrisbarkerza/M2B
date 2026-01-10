@@ -30,7 +30,7 @@ Update these dates dynamically when running the skill.
 ### Review Algorithm
 
 1. **Wins This Week**
-   - Read `admin/personal/urgent.md` and `admin/work/urgent.md`
+   - Read `md/admin/personal/urgent.md` and `md/admin/work/urgent.md`
    - Find completed tasks (checkboxes marked `[x]`)
    - Filter by completion date within last 7 days
    - Read all active project files
@@ -40,8 +40,8 @@ Update these dates dynamically when running the skill.
 2. **Needs Attention**
    - **Stale projects**: Find projects with `updated` date > 14 days ago
    - **Blocked items**: Read all projects with `status: blocked` or `status: waiting`
-   - **Low confidence items**: Read `inbox/inbox-log.md`, find entries with confidence 75-80%
-   - **Unprocessed inbox**: Count any files in `inbox/` directory (shouldn't be any)
+   - **Low confidence items**: Read `md/inbox/inbox-log.md`, find entries with confidence 75-80%
+   - **Unprocessed inbox**: Count any files in `md/inbox/` directory (shouldn't be any)
 
 3. **Looking Ahead** (Next 14 Days)
    - Read urgent tasks with due dates in next 14 days
@@ -143,7 +143,7 @@ Update these dates dynamically when running the skill.
 - Count tasks completed in last 7 days
 
 **For stale projects**:
-- Read all files in `projects/*/active/`, `projects/*/waiting/`, `projects/*/blocked/`
+- Read all files in `md/projects/*/active/`, `md/projects/*/waiting/`, `md/projects/*/blocked/`
 - Parse `updated: YYYY-MM-DD` from frontmatter
 - Calculate: days_since_update = today - updated_date
 - Flag if days_since_update > 14
@@ -154,18 +154,18 @@ Update these dates dynamically when running the skill.
 - Count and list
 
 **For low-confidence items**:
-- Read `inbox/inbox-log.md`
+- Read `md/inbox/inbox-log.md`
 - Parse confidence scores from entries
 - Filter entries with confidence between 75-80
 - Extract original input and classification for review
 
 **For unprocessed inbox**:
-- List files in `inbox/` directory
+- List files in `md/inbox/` directory
 - Count any files other than `inbox-log.md`
 - Should be 0 (all captures should be processed)
 
 **For captures this week**:
-- Read `inbox/inbox-log.md`
+- Read `md/inbox/inbox-log.md`
 - Count entries with timestamp in last 7 days
 - Calculate average confidence score
 

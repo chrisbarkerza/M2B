@@ -225,38 +225,38 @@ After user responds, re-run classification with the additional context.
 
 ### File Writing Logic
 
-**Projects**: Write to `projects/{context}/{status}/{title-slug}.md`
-- Example: `projects/personal/active/website-redesign.md`
+**Projects**: Write to `md/projects/{context}/{status}/{title-slug}.md`
+- Example: `md/projects/personal/active/website-redesign.md`
 - Use template from `templates/project.md`
 - Populate all frontmatter fields
 - Add current date to `created` and `updated`
 
-**People**: Write to `people/{relationship}/{name-slug}.md`
-- Example: `people/friends/sarah-jones.md`
+**People**: Write to `md/people/{relationship}/{name-slug}.md`
+- Example: `md/people/friends/sarah-jones.md`
 - If file exists, append to "Recent Interactions" section
 - Use template from `templates/person.md`
 
-**Ideas**: Write to `ideas/{domain}/{title-slug}.md`
-- Example: `ideas/tech/ai-recipe-app.md`
+**Ideas**: Write to `md/ideas/{domain}/{title-slug}.md`
+- Example: `md/ideas/tech/ai-recipe-app.md`
 - If multiple domains, choose primary (first mentioned)
 - Use template from `templates/idea.md`
 
-**Admin Urgent**: Append to `admin/{context}/urgent.md`
+**Admin Urgent**: Append to `md/admin/{context}/urgent.md`
 - Format: `- [ ] **Task** (due: YYYY-MM-DD) [confidence: XX]`
 - Add under "## Active" section
 - Update frontmatter `updated` date
 
-**Admin Longer-term**: Append to `admin/{context}/longer-term.md`
+**Admin Longer-term**: Append to `md/admin/{context}/longer-term.md`
 - Group by project if project mentioned, else "## General"
 - Format: `- [ ] Task [confidence: XX]`
 - Update frontmatter `updated` date
 
-**Shopping**: Append to `shopping.md`
+**Shopping**: Append to `md/shopping.md`
 - Detect category: Groceries, Hardware, Amazon/Online, Someday/Maybe
 - Format: `- [ ] Item name (optional: details)`
 - Update frontmatter `updated` date
 
-**Notes**: Write to `notes/{subcategory}/{title-slug}.md`
+**Notes**: Write to `md/notes/{subcategory}/{title-slug}.md`
 - Subcategory: daily, meetings, or reference (based on context)
 - Use template from `templates/note.md`
 
@@ -273,7 +273,7 @@ Convert titles to filesystem-safe slugs:
 
 Before filing, check for duplicates:
 
-**Shopping items**: Read `shopping.md`, check if item already exists
+**Shopping items**: Read `md/shopping.md`, check if item already exists
 **Tasks**: Check recent tasks in urgent.md (last 20 items)
 **Projects/Ideas**: Check if file with same slug exists
 
@@ -293,13 +293,13 @@ Some captures belong in multiple places:
 Example: "Idea: Start consulting business. Need to research LLC formation by next week."
 
 Process:
-1. Primary: Create idea file in `ideas/business/consulting-business.md`
-2. Secondary: Add task to `admin/personal/urgent.md` with link
+1. Primary: Create idea file in `md/ideas/business/consulting-business.md`
+2. Secondary: Add task to `md/admin/personal/urgent.md` with link
 3. Response:
 ```
 ✓ Saved in 2 places (confidence: 87%):
-- Idea: "Consulting business" in ideas/business/consulting-business.md
-- Task: "Research LLC formation" in admin/personal/urgent.md (due: 2026-01-17)
+- Idea: "Consulting business" in md/ideas/business/consulting-business.md
+- Task: "Research LLC formation" in md/admin/personal/urgent.md (due: 2026-01-17)
   → Linked to idea file
 ```
 
@@ -316,9 +316,9 @@ Process:
 4. Report summary:
 ```
 ✓ Filed 3 items:
-- Shopping: milk, eggs (shopping.md)
-- Task: Call mom (admin/personal/urgent.md, due: 2026-01-11) [confidence: 95%]
-- Idea: Recipe app (ideas/tech/recipe-app.md) [confidence: 88%]
+- Shopping: milk, eggs (md/shopping.md)
+- Task: Call mom (md/admin/personal/urgent.md, due: 2026-01-11) [confidence: 95%]
+- Idea: Recipe app (md/ideas/tech/recipe-app.md) [confidence: 88%]
 ```
 
 If any item < 75% confidence, ask about those specifically:
@@ -333,7 +333,7 @@ The rest are filed:
 
 ### Inbox Log Format
 
-After filing, append to `inbox/inbox-log.md`:
+After filing, append to `md/inbox/inbox-log.md`:
 
 ```markdown
 ## 2026-01-10 14:35:22
@@ -356,8 +356,8 @@ For multi-category:
 **Classification**: idea + admin_urgent (multi-category)
 **Confidence**: 87%
 **Locations**:
-  - ideas/business/consulting-business.md
-  - admin/personal/urgent.md
+  - md/ideas/business/consulting-business.md
+  - md/admin/personal/urgent.md
 **Extracted**:
   - Idea title: Consulting business
   - Domain: business
@@ -399,7 +399,7 @@ Location: [file-path]
 - If person: Append to existing file under "Recent Interactions"
 - If project/idea: Ask user:
   ```
-  A file already exists for "Website Redesign" in projects/personal/active/.
+  A file already exists for "Website Redesign" in md/projects/personal/active/.
   Did you want to:
   A) Update the existing project
   B) Create a new project with a different name
@@ -472,7 +472,7 @@ Use this for:
 
 **Files Created/Modified**:
 
-1. `ideas/tech/ai-recipe-app.md`:
+1. `md/ideas/tech/ai-recipe-app.md`:
 ```yaml
 ---
 type: idea
@@ -506,20 +506,20 @@ Links to other idea files or external resources.
 - **2026-01-10**: Initial capture
 ```
 
-2. `admin/personal/urgent.md` (appended):
+2. `md/admin/personal/urgent.md` (appended):
 ```markdown
 - [ ] **Research existing recipe apps** (due: 2026-01-17) [confidence: 88] #idea:ai-recipe-app
 ```
 
-3. `inbox/inbox-log.md` (appended):
+3. `md/inbox/inbox-log.md` (appended):
 ```markdown
 ## 2026-01-10 14:45:30
 **Input**: "Idea: Build an AI recipe app that suggests meals based on ingredients. Need to research existing apps by next week."
 **Classification**: idea + admin_urgent (multi-category)
 **Confidence**: 88%
 **Locations**:
-  - ideas/tech/ai-recipe-app.md (created)
-  - admin/personal/urgent.md (task appended)
+  - md/ideas/tech/ai-recipe-app.md (created)
+  - md/admin/personal/urgent.md (task appended)
 **Extracted**:
   - Idea title: AI recipe app for ingredient-based meal suggestions
   - Domain: tech
@@ -535,8 +535,8 @@ Links to other idea files or external resources.
 **Response to User**:
 ```
 ✓ Saved in 2 places (confidence: 88%):
-1. Idea: "AI Recipe App for Ingredient-Based Meal Suggestions" in ideas/tech/ai-recipe-app.md
-2. Task: "Research existing recipe apps" in admin/personal/urgent.md (due: 2026-01-17)
+1. Idea: "AI Recipe App for Ingredient-Based Meal Suggestions" in md/ideas/tech/ai-recipe-app.md
+2. Task: "Research existing recipe apps" in md/admin/personal/urgent.md (due: 2026-01-17)
    → Task linked to idea file via #idea:ai-recipe-app tag
 ```
 

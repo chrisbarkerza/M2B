@@ -29,26 +29,26 @@ Update this date dynamically when running the skill.
 ### Digest Algorithm
 
 1. **Read Urgent Tasks** (High Priority)
-   - Read `admin/personal/urgent.md`
-   - Read `admin/work/urgent.md`
+   - Read `md/admin/personal/urgent.md`
+   - Read `md/admin/work/urgent.md`
    - Identify tasks due within next 3 days (or overdue)
    - Extract task name and due date
 
 2. **Scan Active Projects** (Medium Priority)
-   - Find all files in `projects/personal/active/` and `projects/work/active/`
+   - Find all files in `md/projects/personal/active/` and `md/projects/work/active/`
    - Read frontmatter `updated` date
    - Flag projects with no update in > 7 days
    - Extract project title and days since last update
    - Identify projects with populated `next_actions` field
 
 3. **Check Upcoming Dates** (Medium Priority)
-   - Read all files in `people/*/` directories
+   - Read all files in `md/people/*/` directories
    - Check `birthday` field
    - Identify birthdays in next 7 days
    - Extract person name and birthday date
 
 4. **Identify Quick Wins** (Low Priority)
-   - Read `admin/personal/longer-term.md` and `admin/work/longer-term.md`
+   - Read `md/admin/personal/longer-term.md` and `md/admin/work/longer-term.md`
    - Look for tasks tagged with high priority or low effort
    - Select max 2 quick wins to highlight
 
@@ -113,7 +113,7 @@ Update this date dynamically when running the skill.
 
 ### Reading Files
 
-**For urgent tasks** (admin/personal/urgent.md, admin/work/urgent.md):
+**For urgent tasks** (md/admin/personal/urgent.md, admin/work/urgent.md):
 - Parse markdown checkboxes: `- [ ] **Task** (due: YYYY-MM-DD)`
 - Only include unchecked tasks
 - Calculate days until due: (due_date - today)

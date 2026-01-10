@@ -14,8 +14,8 @@ Conversational corrections:
 
 ```
 "That website redesign note should actually be a project"
-"/m2b-fix notes/reference/side-hustle.md to project"
-"Move the recipe app idea to projects/personal/active"
+"/m2b-fix md/notes/reference/side-hustle.md to project"
+"Move the recipe app idea to md/projects/personal/active"
 "That shopping item was actually a task"
 ```
 
@@ -70,8 +70,8 @@ If user provides description:
 4. Ask user to clarify if multiple matches:
 ```
 I found 2 possible matches:
-A) notes/meetings/website-planning.md (created Jan 8)
-B) ideas/business/website-redesign.md (created Jan 5)
+A) md/notes/meetings/website-planning.md (created Jan 8)
+B) md/ideas/business/website-redesign.md (created Jan 5)
 Which one needs correction?
 ```
 
@@ -81,7 +81,7 @@ Which one needs correction?
 ```
 Got it, you want to reclassify "[item]". Should this be:
 A) A project (multi-step with goals)
-B) A task (single action in admin/urgent or longer-term)
+B) A task (single action in md/admin/urgent or longer-term)
 C) An idea (future possibility)
 D) A note (general information)
 E) Something else
@@ -112,7 +112,7 @@ Should this task have a due date?
 
 **Example 1: Note → Project**
 
-Original file: `notes/reference/side-hustle.md`
+Original file: `md/notes/reference/side-hustle.md`
 ```yaml
 ---
 type: note
@@ -136,7 +136,7 @@ User: "That side hustle note should be a project"
 Skill asks: "I'll convert this to a project. What status? (active/waiting/blocked/done)"
 User: "active"
 
-New file: `projects/personal/active/side-hustle-blog.md`
+New file: `md/projects/personal/active/side-hustle-blog.md`
 ```yaml
 ---
 type: project
@@ -172,13 +172,13 @@ Start a blog about productivity and Second Brain systems. Monetize with affiliat
 ```
 
 Actions:
-1. Delete `notes/reference/side-hustle.md`
-2. Create `projects/personal/active/side-hustle-blog.md`
+1. Delete `md/notes/reference/side-hustle.md`
+2. Create `md/projects/personal/active/side-hustle-blog.md`
 3. Update inbox-log.md:
 ```markdown
 ## 2026-01-10 16:20:45 [CORRECTION]
-**Original**: notes/reference/side-hustle.md (note, confidence: 76%)
-**Corrected To**: projects/personal/active/side-hustle-blog.md (project, active)
+**Original**: md/notes/reference/side-hustle.md (note, confidence: 76%)
+**Corrected To**: md/projects/personal/active/side-hustle-blog.md (project, active)
 **Reason**: User-requested reclassification - should be active project, not note
 **New Confidence**: 100% (user-corrected)
 **Original Created**: 2026-01-08
@@ -190,7 +190,7 @@ Actions:
 Response:
 ```
 ✓ Corrected! Moved from note to project (confidence: 100%)
-New location: projects/personal/active/side-hustle-blog.md
+New location: md/projects/personal/active/side-hustle-blog.md
 - Preserved original content and created date
 - Added project structure with next actions
 - Deleted old note file
@@ -198,7 +198,7 @@ New location: projects/personal/active/side-hustle-blog.md
 
 **Example 2: Task Context Change**
 
-Original: Task in `admin/personal/urgent.md`
+Original: Task in `md/admin/personal/urgent.md`
 ```
 - [ ] **Prepare Q4 slides** (due: 2026-01-12) [confidence: 82]
 ```
@@ -206,8 +206,8 @@ Original: Task in `admin/personal/urgent.md`
 User: "That Q4 slides task is actually for work, not personal"
 
 Actions:
-1. Remove from `admin/personal/urgent.md`
-2. Add to `admin/work/urgent.md`:
+1. Remove from `md/admin/personal/urgent.md`
+2. Add to `md/admin/work/urgent.md`:
 ```
 - [ ] **Prepare Q4 slides** (due: 2026-01-12) [confidence: 100] #corrected
 ```
@@ -216,12 +216,12 @@ Actions:
 Response:
 ```
 ✓ Corrected! Moved task from personal to work context (confidence: 100%)
-Location: admin/work/urgent.md
+Location: md/admin/work/urgent.md
 ```
 
 **Example 3: Field Update (No Move)**
 
-Original: `people/friends/john-smith.md`
+Original: `md/people/friends/john-smith.md`
 ```yaml
 birthday: ""
 ```
@@ -238,7 +238,7 @@ Actions:
 Response:
 ```
 ✓ Updated! Added birthday for John Smith (confidence: 100%)
-Location: people/friends/john-smith.md
+Location: md/people/friends/john-smith.md
 Birthday: March 15
 ```
 
@@ -250,7 +250,7 @@ User: "That 'recipe app' idea should actually be split - the idea stays, but 're
 
 Process:
 1. Keep idea file as-is
-2. Create new task in admin/personal/urgent.md
+2. Create new task in md/admin/personal/urgent.md
 3. Link task to idea with tag: `#idea:ai-recipe-app`
 4. Log split correction
 
@@ -295,7 +295,7 @@ Process:
 ### Edge Cases
 
 **Correcting shopping items** (inline, not separate files):
-- Edit shopping.md in place
+- Edit md/shopping.md in place
 - Move item between sections (Groceries ↔ Hardware)
 - Or remove from shopping, create task if it was misclassified
 
@@ -314,8 +314,8 @@ Recent captures: [list last 5 from inbox-log.md]
 ```
 I can delete "[item]", but I recommend moving it to an archive instead.
 Should I:
-A) Move to projects/personal/done/archive/ (for projects)
-B) Move to notes/archive/ (for notes/ideas)
+A) Move to md/projects/personal/done/archive/ (for projects)
+B) Move to md/notes/archive/ (for notes/ideas)
 C) Delete permanently
 ```
 

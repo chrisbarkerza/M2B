@@ -447,7 +447,7 @@ class UI {
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const fileContent = await api.getFile('shopping.md');
+            const fileContent = await api.getFile('md/shopping.md');
             const parsed = DataParser.parseShoppingList(fileContent);
             AppState.data.shopping = parsed;
 
@@ -507,13 +507,13 @@ class UI {
         try {
             if (AppState.isOnline) {
                 const api = new GitHubAPI(AppState.token, AppState.repo);
-                await api.updateFile('shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
+                await api.updateFile('md/shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
                 this.showToast('✓ Updated', 'success');
             } else {
                 await QueueManager.enqueue({
                     type: 'update_file',
                     data: {
-                        path: 'shopping.md',
+                        path: 'md/shopping.md',
                         content: newContent,
                         message: `Update shopping list (offline)`
                     },
@@ -533,8 +533,8 @@ class UI {
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const urgentContent = await api.getFile(`admin/${context}/urgent.md`);
-            const longerTermContent = await api.getFile(`admin/${context}/longer-term.md`);
+            const urgentContent = await api.getFile(`md/admin/${context}/urgent.md`);
+            const longerTermContent = await api.getFile(`md/admin/${context}/longer-term.md`);
 
             AppState.data.tasks[context].urgent = DataParser.parseTaskList(urgentContent);
             AppState.data.tasks[context].longerTerm = DataParser.parseTaskList(longerTermContent);

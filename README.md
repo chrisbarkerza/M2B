@@ -27,38 +27,39 @@ This system implements the "Second Brain" concept using the 8 essential building
 
 ```
 M2B/
-├── projects/          # Multi-step projects
-│   ├── personal/      # Personal projects
-│   │   ├── active/
-│   │   ├── waiting/
-│   │   ├── blocked/
-│   │   └── done/
-│   └── work/          # Work projects
-│       └── (same structure)
-├── people/            # Relationship management
-│   ├── family/
-│   ├── friends/
-│   └── professional/
-├── ideas/             # Future possibilities
-│   ├── tech/
-│   ├── business/
-│   ├── personal/
-│   └── creative/
-├── admin/             # Tasks and todos
-│   ├── personal/
-│   │   ├── urgent.md        # Due within 7 days
-│   │   └── longer-term.md   # Future tasks
-│   └── work/
-│       ├── urgent.md
-│       └── longer-term.md
-├── notes/             # General notes
-│   ├── daily/
-│   ├── meetings/
-│   └── reference/
-├── shopping.md        # Shopping list (at root for quick mobile access)
-├── inbox/
-│   └── inbox-log.md   # Audit trail of all captures
-└── templates/         # Frontmatter schemas
+├── md/                      # All Second Brain content
+│   ├── projects/          # Multi-step projects
+│   │   │   │   ├── personal/      # Personal projects
+│   │   │   ├── active/
+│   │   │   ├── waiting/
+│   │   │   ├── blocked/
+│   │   │   └── done/
+│   │   │   └── work/          # Work projects
+│   │       └── (same structure)
+│   ├── people/            # Relationship management
+│   │   ├── family/
+│   │   ├── friends/
+│   │   └── professional/
+│   ├── ideas/             # Future possibilities
+│   │   ├── tech/
+│   │   ├── business/
+│   │   │   │   ├── personal/
+│   │   └── creative/
+│   ├── admin/             # Tasks and todos
+│   │   │   │   ├── personal/
+│   │   │   ├── urgent.md        # Due within 7 days
+│   │   │   └── longer-term.md   # Future tasks
+│   │   │   └── work/
+│   │       ├── urgent.md
+│   │       └── longer-term.md
+│   ├── notes/             # General notes
+│   │   ├── daily/
+│   │   ├── meetings/
+│   │   └── reference/
+│   ├── shopping.md        # Shopping list (at root for quick mobile access)
+│   ├── inbox/
+│   │   └── inbox-log.md   # Audit trail of all captures
+│   └── templates/         # Frontmatter schemas
 ```
 
 ## Quick Start
