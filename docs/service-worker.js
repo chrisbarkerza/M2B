@@ -3,7 +3,7 @@
  * Handles offline caching and background sync
  */
 
-const CACHE_VERSION = 'm2b-v1';
+const CACHE_VERSION = 'm2b-v2';
 const CACHE_FILES = [
     '/',
     '/index.html',

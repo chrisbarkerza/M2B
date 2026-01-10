@@ -283,14 +283,18 @@ class UI {
             captureBtn.innerHTML = '<span class="spinner"></span> Capturing...';
 
             try {
+                const lines = text.split('\n');
+                const title = lines[0].trim().slice(0, 80) || 'Capture';
+                const body = lines.slice(1).join('\n').trim() || text;
+
                 if (AppState.isOnline && AppState.token) {
                     const api = new GitHubAPI(AppState.token, AppState.repo);
-                    await api.createIssue('', text);
+                    await api.createIssue(title, body);
                     this.showToast('✓ Captured! Processing...', 'success');
                 } else {
                     await QueueManager.enqueue({
                         type: 'capture',
-                        data: { title: '', body: text },
+                        data: { title, body },
                         description: text.substring(0, 50) + '...'
                     });
                     this.showToast('✓ Queued for sync', 'info');
