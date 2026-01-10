@@ -647,13 +647,13 @@ class UI {
                 this.showToast('Fix Classifications: Run /m2b-fix in Claude Code CLI', 'info');
                 break;
             case 'projects':
-                this.showToast('Projects view coming soon', 'info');
+                this.showProjects();
                 break;
             case 'people':
-                this.showToast('People view coming soon', 'info');
+                this.showPeople();
                 break;
             case 'search':
-                this.showToast('Search coming soon', 'info');
+                this.showSearch();
                 break;
             case 'inbox':
                 this.showInboxLog();
@@ -825,6 +825,262 @@ class UI {
             document.getElementById('fileContentBody').innerHTML = this.markdownToHtml(content);
         } catch (error) {
             this.showToast('Error loading inbox log: ' + error.message, 'error');
+        }
+    }
+
+    static async showProjects() {
+        const modal = document.getElementById('projectsModal');
+        modal.classList.remove('hidden');
+
+        // Set up tab switching
+        const tabs = modal.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const status = tab.dataset.status;
+                this.loadProjects(status);
+            });
+        });
+
+        await this.loadProjects('active');
+    }
+
+    static closeProjects() {
+        document.getElementById('projectsModal').classList.add('hidden');
+    }
+
+    static async loadProjects(status) {
+        const projectsList = document.getElementById('projectsList');
+        projectsList.innerHTML = '<div class="loading">Loading projects...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Fetch from both personal and work
+            const paths = [
+                { path: `md/projects/personal/${status}`, context: 'Personal' },
+                { path: `md/projects/work/${status}`, context: 'Work' }
+            ];
+
+            const fetchPromises = paths.map(async ({ path, context }) => {
+                try {
+                    const contents = await api.request(`/contents/${path}`);
+                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                    return { context, files };
+                } catch (e) {
+                    return { context, files: [] };
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            let html = '';
+
+            results.forEach(({ context, files }) => {
+                if (files.length > 0) {
+                    html += `<div class="project-section">
+                        <h3>${context}</h3>
+                        <div class="project-cards">`;
+
+                    files.forEach(file => {
+                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
+                        html += `
+                            <div class="project-card" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                                <div class="project-title">${name}</div>
+                                <div class="project-meta">Click to view details</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                }
+            });
+
+            if (html === '') {
+                html = `<div class="empty-state">No ${status} projects found.</div>`;
+            }
+
+            projectsList.innerHTML = html;
+        } catch (error) {
+            projectsList.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
+        }
+    }
+
+    static async showPeople() {
+        const modal = document.getElementById('peopleModal');
+        modal.classList.remove('hidden');
+
+        // Set up tab switching
+        const tabs = modal.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const category = tab.dataset.category;
+                this.loadPeople(category);
+            });
+        });
+
+        await this.loadPeople('all');
+    }
+
+    static closePeople() {
+        document.getElementById('peopleModal').classList.add('hidden');
+    }
+
+    static async loadPeople(category) {
+        const peopleList = document.getElementById('peopleList');
+        peopleList.innerHTML = '<div class="loading">Loading people...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            let paths = [];
+            if (category === 'all') {
+                paths = [
+                    { path: 'md/people/professional', label: 'Professional' },
+                    { path: 'md/people/family', label: 'Family' },
+                    { path: 'md/people/friends', label: 'Friends' }
+                ];
+            } else {
+                paths = [{ path: `md/people/${category}`, label: category.charAt(0).toUpperCase() + category.slice(1) }];
+            }
+
+            const fetchPromises = paths.map(async ({ path, label }) => {
+                try {
+                    const contents = await api.request(`/contents/${path}`);
+                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                    return { label, files };
+                } catch (e) {
+                    return { label, files: [] };
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            let html = '';
+
+            results.forEach(({ label, files }) => {
+                if (files.length > 0) {
+                    html += `<div class="people-section">
+                        <h3>${label}</h3>
+                        <div class="people-cards">`;
+
+                    files.forEach(file => {
+                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
+                        html += `
+                            <div class="people-card" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                                <div class="people-icon">
+                                    <svg class="icon icon-user" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                                        <circle cx="12" cy="7" r="4" />
+                                    </svg>
+                                </div>
+                                <div class="people-name">${name}</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                }
+            });
+
+            if (html === '') {
+                html = `<div class="empty-state">No people found in this category.</div>`;
+            }
+
+            peopleList.innerHTML = html;
+        } catch (error) {
+            peopleList.innerHTML = `<div class="error">Error loading people: ${error.message}</div>`;
+        }
+    }
+
+    static async showSearch() {
+        const modal = document.getElementById('searchModal');
+        modal.classList.remove('hidden');
+
+        const searchInput = document.getElementById('searchInput');
+        searchInput.focus();
+
+        // Remove old event listener if exists and add new one
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+        newSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length >= 2) {
+                this.performSearch(query);
+            } else {
+                document.getElementById('searchResults').innerHTML = '<div class="empty-state">Enter at least 2 characters to search.</div>';
+            }
+        });
+    }
+
+    static closeSearch() {
+        document.getElementById('searchModal').classList.add('hidden');
+    }
+
+    static async performSearch(query) {
+        const searchResults = document.getElementById('searchResults');
+        searchResults.innerHTML = '<div class="loading">Searching...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Search in all directories
+            const searchPaths = [
+                'md/admin/personal',
+                'md/admin/work',
+                'md/projects/personal/active',
+                'md/projects/personal/waiting',
+                'md/projects/work/active',
+                'md/projects/work/waiting',
+                'md/ideas',
+                'md/people/professional',
+                'md/people/family',
+                'md/people/friends',
+                'md/inbox'
+            ];
+
+            const fetchPromises = searchPaths.map(async path => {
+                try {
+                    const contents = await api.request(`/contents/${path}`);
+                    const files = contents.filter(item =>
+                        item.type === 'file' &&
+                        item.name.toLowerCase().includes(query.toLowerCase())
+                    );
+                    return files.map(f => ({ ...f, folder: path }));
+                } catch (e) {
+                    return [];
+                }
+            });
+
+            const results = await Promise.all(fetchPromises);
+            const allFiles = results.flat();
+
+            if (allFiles.length === 0) {
+                searchResults.innerHTML = `<div class="empty-state">No results found for "${query}".</div>`;
+                return;
+            }
+
+            let html = '<div class="search-results-list">';
+
+            allFiles.forEach(file => {
+                const name = file.name.replace('.md', '');
+                const folder = file.folder.replace('md/', '').replace(/\//g, ' > ');
+                html += `
+                    <div class="search-result-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                        <div class="search-result-name">${name}</div>
+                        <div class="search-result-path">${folder}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            searchResults.innerHTML = html;
+        } catch (error) {
+            searchResults.innerHTML = `<div class="error">Error searching: ${error.message}</div>`;
         }
     }
 

@@ -405,6 +405,69 @@
             </div>
         </div>
 
+        <!-- Projects Modal -->
+        <div id="projectsModal" class="modal hidden">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Projects</h2>
+                    <button class="close-btn" onclick="UI.closeProjects()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="tabs">
+                        <button class="tab active" data-status="active">Active</button>
+                        <button class="tab" data-status="waiting">Waiting</button>
+                        <button class="tab" data-status="blocked">Blocked</button>
+                        <button class="tab" data-status="done">Done</button>
+                    </div>
+                    <div id="projectsList" class="projects-list">
+                        <div class="loading">Loading projects...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- People Modal -->
+        <div id="peopleModal" class="modal hidden">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>People</h2>
+                    <button class="close-btn" onclick="UI.closePeople()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="tabs">
+                        <button class="tab active" data-category="all">All</button>
+                        <button class="tab" data-category="professional">Professional</button>
+                        <button class="tab" data-category="family">Family</button>
+                        <button class="tab" data-category="friends">Friends</button>
+                    </div>
+                    <div id="peopleList" class="people-list">
+                        <div class="loading">Loading people...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Modal -->
+        <div id="searchModal" class="modal hidden">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Search</h2>
+                    <button class="close-btn" onclick="UI.closeSearch()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="searchInput" placeholder="Search anything..." class="search-input">
+                    </div>
+                    <div id="searchResults" class="search-results">
+                        <div class="empty-state">Enter a search term to find files, tasks, ideas, people, and more.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Status Toast -->
         <div id="toast" class="toast hidden"></div>
 
