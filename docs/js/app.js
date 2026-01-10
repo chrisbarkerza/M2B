@@ -703,43 +703,49 @@ class UI {
                 { path: 'md', label: 'Other Files', root: true }
             ];
 
-            let html = '<div class="file-tree-list">';
-
-            for (const dir of structure) {
+            // Fetch all directories in parallel
+            const fetchPromises = structure.map(async dir => {
                 try {
+                    const contents = await api.request(`/contents/${dir.path}`);
                     let files;
                     if (dir.root) {
                         // Get root level files only
-                        const contents = await api.request(`/contents/${dir.path}`);
                         files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
                     } else {
-                        const contents = await api.request(`/contents/${dir.path}`);
                         files = contents.filter(item => item.type === 'file');
                     }
-
-                    if (files.length > 0) {
-                        html += `<div class="file-tree-folder">`;
-                        html += `<div class="file-tree-folder-name">${dir.label}</div>`;
-                        html += `<ul class="file-tree-items">`;
-
-                        files.forEach(file => {
-                            html += `
-                                <li class="file-tree-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
-                                    <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                    </svg>
-                                    ${file.name}
-                                </li>
-                            `;
-                        });
-
-                        html += `</ul></div>`;
-                    }
+                    return { ...dir, files };
                 } catch (e) {
-                    // Directory doesn't exist, skip it
+                    // Directory doesn't exist or is inaccessible, return empty
+                    return { ...dir, files: [] };
                 }
-            }
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            let html = '<div class="file-tree-list">';
+
+            results.forEach(dir => {
+                if (dir.files.length > 0) {
+                    html += `<div class="file-tree-folder">`;
+                    html += `<div class="file-tree-folder-name">${dir.label}</div>`;
+                    html += `<ul class="file-tree-items">`;
+
+                    dir.files.forEach(file => {
+                        html += `
+                            <li class="file-tree-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                                <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                ${file.name}
+                            </li>
+                        `;
+                    });
+
+                    html += `</ul></div>`;
+                }
+            });
 
             html += '</div>';
             fileTree.innerHTML = html;
