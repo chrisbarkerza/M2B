@@ -54,10 +54,7 @@ docs/
 │   └── styles.css         # Mobile-first responsive design
 ├── js/
 │   └── app.js             # App logic, GitHub API, offline queue
-└── icons/
-    ├── icon.svg           # Scalable icon
-    ├── icon-*.png         # PNG icons (72-512px)
-    └── README.md          # Icon generation guide
+└── md/                    # Markdown content for app data
 ```
 
 ## Architecture
@@ -129,11 +126,11 @@ python3 -m http.server 8000
 ### 3. Configure PWA
 
 1. Visit your PWA URL (or localhost:8000)
-2. Click settings icon (⚙️) in header
+2. Click settings button in header
 3. Paste GitHub token
 4. Verify repo: `chrisbarkerza/M2B`
 5. Click "Save Settings"
-6. Click "Test Connection" - should see ✓
+6. Click "Test Connection" - should see a success message
 7. Close settings
 
 ### 4. Install as App (Mobile)

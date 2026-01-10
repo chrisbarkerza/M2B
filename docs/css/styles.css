@@ -68,6 +68,9 @@ body {
     font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .header-actions {
@@ -88,6 +91,12 @@ body {
     cursor: pointer;
     font-size: 1.2rem;
     transition: background 0.2s;
+}
+
+.icon {
+    width: 1em;
+    height: 1em;
+    display: block;
 }
 
 .icon-btn:hover, .icon-btn:active {
@@ -257,6 +266,9 @@ body {
     font-size: 1.25rem;
     margin-bottom: 12px;
     color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* === Checklist === */
@@ -371,6 +383,8 @@ body {
 
 .btn-icon {
     font-size: 1.2rem;
+    display: inline-flex;
+    align-items: center;
 }
 
 .spinner {
@@ -669,7 +683,15 @@ body {
     z-index: 2000;
     animation: slideUp 0.3s;
     max-width: 90%;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+}
+
+.toast-icon {
+    display: inline-flex;
+    align-items: center;
 }
 
 .toast.hidden {
@@ -702,6 +724,12 @@ body {
     font-weight: 500;
     z-index: 99;
     animation: slideDown 0.3s;
+}
+
+.offline-indicator .icon {
+    display: inline-block;
+    vertical-align: text-bottom;
+    margin-right: 6px;
 }
 
 @keyframes slideDown {

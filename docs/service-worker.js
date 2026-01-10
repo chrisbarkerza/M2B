@@ -9,9 +9,7 @@ const CACHE_FILES = [
     '/index.html',
     '/css/styles.css',
     '/js/app.js',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    '/manifest.json'
 ];
 
 // Install event - cache essential files
@@ -130,8 +128,6 @@ self.addEventListener('push', event => {
 
     const options = {
         body: data.body || 'You have updates in your Second Brain',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/badge-72.png',
         tag: 'm2b-notification',
         data: data
     };

@@ -197,11 +197,11 @@ class QueueManager {
                 } else if (action.type === 'update_file') {
                     await api.updateFile(action.data.path, action.data.content, action.data.message);
                 }
-                UI.showToast(`✓ Synced: ${action.description}`, 'success');
+                UI.showToast(`Synced: ${action.description}`, 'success');
             } catch (error) {
                 // Re-queue failed actions
                 AppState.queue.push(action);
-                UI.showToast(`✗ Sync failed: ${action.description}`, 'error');
+                UI.showToast(`Sync failed: ${action.description}`, 'error');
             }
         }
 
@@ -290,22 +290,30 @@ class UI {
                 if (AppState.isOnline && AppState.token) {
                     const api = new GitHubAPI(AppState.token, AppState.repo);
                     await api.createIssue(title, body);
-                    this.showToast('✓ Captured! Processing...', 'success');
+                    this.showToast('Captured! Processing...', 'success');
                 } else {
                     await QueueManager.enqueue({
                         type: 'capture',
                         data: { title, body },
                         description: text.substring(0, 50) + '...'
                     });
-                    this.showToast('✓ Queued for sync', 'info');
+                    this.showToast('Queued for sync', 'info');
                 }
 
                 captureInput.value = '';
             } catch (error) {
-                this.showToast('✗ Capture failed: ' + error.message, 'error');
+                this.showToast('Capture failed: ' + error.message, 'error');
             } finally {
                 captureBtn.disabled = false;
-                captureBtn.innerHTML = '<span class="btn-icon">📥</span> Capture';
+                captureBtn.innerHTML = `
+                    <span class="btn-icon">
+                        <svg class="icon icon-inbox" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                        </svg>
+                    </span>
+                    Capture
+                `;
             }
         });
 
@@ -334,7 +342,7 @@ class UI {
             localStorage.setItem('github_token', AppState.token);
             localStorage.setItem('github_repo', AppState.repo);
 
-            this.showToast('✓ Settings saved', 'success');
+            this.showToast('Settings saved', 'success');
             modal.classList.add('hidden');
             this.syncData();
         });
@@ -348,9 +356,9 @@ class UI {
                 const repo = document.getElementById('githubRepo').value;
                 const api = new GitHubAPI(token, repo);
                 await api.request('/contents/README.md');
-                this.showToast('✓ Connection successful!', 'success');
+                this.showToast('Connection successful!', 'success');
             } catch (error) {
-                this.showToast('✗ Connection failed: ' + error.message, 'error');
+                this.showToast('Connection failed: ' + error.message, 'error');
             } finally {
                 testBtn.disabled = false;
                 testBtn.textContent = 'Test Connection';
@@ -366,7 +374,7 @@ class UI {
                     projects: [],
                     people: []
                 };
-                this.showToast('✓ Cache cleared', 'success');
+                this.showToast('Cache cleared', 'success');
             }
         });
     }
@@ -437,9 +445,9 @@ class UI {
 
             localStorage.setItem('last_sync', new Date().toISOString());
             document.getElementById('lastSync').textContent = new Date().toLocaleString();
-            this.showToast('✓ Synced', 'success');
+            this.showToast('Synced', 'success');
         } catch (error) {
-            this.showToast('✗ Sync failed: ' + error.message, 'error');
+            this.showToast('Sync failed: ' + error.message, 'error');
         } finally {
             syncBtn.classList.remove('syncing');
         }
@@ -512,7 +520,7 @@ class UI {
             if (AppState.isOnline) {
                 const api = new GitHubAPI(AppState.token, AppState.repo);
                 await api.updateFile('md/shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
-                this.showToast('✓ Updated', 'success');
+                this.showToast('Updated', 'success');
             } else {
                 await QueueManager.enqueue({
                     type: 'update_file',
@@ -523,10 +531,10 @@ class UI {
                     },
                     description: 'Shopping list update'
                 });
-                this.showToast('✓ Queued for sync', 'info');
+                this.showToast('Queued for sync', 'info');
             }
         } catch (error) {
-            this.showToast('✗ Update failed: ' + error.message, 'error');
+            this.showToast('Update failed: ' + error.message, 'error');
             checkbox.checked = !checkbox.checked; // Revert
         }
     }
@@ -553,7 +561,16 @@ class UI {
         const content = document.getElementById('tasksContent');
         const { urgent, longerTerm } = AppState.data.tasks[context];
 
-        let html = '<div class="section"><h3>🔥 Urgent (Due within 7 days)</h3><div class="checklist">';
+        let html = `
+            <div class="section">
+                <h3>
+                    <svg class="icon icon-flame" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
+                    </svg>
+                    Urgent (Due within 7 days)
+                </h3>
+                <div class="checklist">
+        `;
 
         urgent.tasks.active.forEach(task => {
             const dueText = task.due ? ` <span class="due-date">(due: ${task.due})</span>` : '';
@@ -567,7 +584,19 @@ class UI {
 
         html += '</div></div>';
 
-        html += '<div class="section"><h3>📅 Longer Term</h3><div class="checklist">';
+        html += `
+            <div class="section">
+                <h3>
+                    <svg class="icon icon-calendar" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M8 2v4" />
+                        <path d="M16 2v4" />
+                        <rect width="18" height="18" x="3" y="4" rx="2" />
+                        <path d="M3 10h18" />
+                    </svg>
+                    Longer Term
+                </h3>
+                <div class="checklist">
+        `;
 
         longerTerm.tasks.active.forEach(task => {
             html += `
@@ -604,7 +633,12 @@ class UI {
         queueSection.classList.remove('hidden');
         queueList.innerHTML = AppState.queue.map(item => `
             <div class="queue-item">
-                <span class="queue-icon">⏳</span>
+                <span class="queue-icon">
+                    <svg class="icon icon-clock" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 6v6l4 2" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                </span>
                 <span class="queue-text">${item.description}</span>
             </div>
         `).join('');
@@ -612,7 +646,35 @@ class UI {
 
     static showToast(message, type = 'info') {
         const toast = document.getElementById('toast');
-        toast.textContent = message;
+        const icons = {
+            success: `
+                <svg class="icon icon-check" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                </svg>
+            `,
+            error: `
+                <svg class="icon icon-x" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                </svg>
+            `,
+            info: `
+                <svg class="icon icon-info" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                </svg>
+            `
+        };
+        const iconMarkup = icons[type] || icons.info;
+
+        toast.textContent = '';
+        const iconWrapper = document.createElement('span');
+        iconWrapper.className = 'toast-icon';
+        iconWrapper.innerHTML = iconMarkup;
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message;
+        toast.append(iconWrapper, textSpan);
         toast.className = `toast ${type}`;
         toast.classList.remove('hidden');
 

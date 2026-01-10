@@ -4,12 +4,12 @@ Your AI-powered Second Brain, accessible from anywhere.
 
 ## Features
 
-- 📥 **Quick Capture** - Capture thoughts, tasks, and ideas instantly
-- 🛒 **Shopping List** - Interactive checklist with offline support
-- ✅ **Tasks** - Manage urgent and longer-term tasks
-- 💡 **Ideas** - Browse ideas by domain
-- 📴 **Offline Mode** - Works without internet, syncs when online
-- 📱 **Install as App** - Add to home screen for native app experience
+- **Quick Capture** - Capture thoughts, tasks, and ideas instantly
+- **Shopping List** - Interactive checklist with offline support
+- **Tasks** - Manage urgent and longer-term tasks
+- **Ideas** - Browse ideas by domain
+- **Offline Mode** - Works without internet, syncs when online
+- **Install as App** - Add to home screen for native app experience
 
 ## Access
 
@@ -18,7 +18,7 @@ Visit: **https://chrisbarkerza.github.io/M2B**
 ## First-Time Setup
 
 1. Visit the app URL
-2. Click the settings icon (⚙️)
+2. Click the settings button
 3. Create a GitHub Personal Access Token:
    - Go to https://github.com/settings/tokens/new
    - Name: "M2B PWA"
@@ -34,7 +34,7 @@ Visit: **https://chrisbarkerza.github.io/M2B**
 
 ### Android (Chrome/Samsung Internet)
 1. Visit the app URL
-2. Tap the menu (⋮)
+2. Tap the menu (three dots)
 3. Select "Add to Home screen" or "Install app"
 4. Confirm installation
 
@@ -52,7 +52,7 @@ The app automatically caches data and queues actions when offline:
 - **Checkbox changes** are queued and synced
 - **View cached data** even without internet
 
-When you go back online, tap the sync button (🔄) or wait for automatic sync.
+When you go back online, tap the sync button or wait for automatic sync.
 
 ## Privacy & Security
 
@@ -80,7 +80,7 @@ python3 -m http.server 8000
 
 **Changes not syncing:**
 - Check you're online (look for offline indicator)
-- Tap sync button (🔄) manually
+- Tap the sync button manually
 - Check GitHub token has `repo` permissions
 
 **Can't install as app:**
