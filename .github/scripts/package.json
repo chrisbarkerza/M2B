@@ -1,0 +1,9 @@
+{
+  "name": "m2b-capture-processor",
+  "version": "1.0.0",
+  "description": "Second Brain capture processing script for GitHub Actions",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1"
+  }
+}
