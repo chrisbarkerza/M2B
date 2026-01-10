@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Icon Generator</title>
+</head>
+<body>
+    <h1>Icon Generator</h1>
+    <p>Open browser console and run the generator to create icon files</p>
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        // Simple icon generator using emoji
+        function generateIcon(size) {
+            const canvas = document.getElementById('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#4A90E2');
+            gradient.addColorStop(1, '#357ABD');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Brain emoji (or use text)
+            ctx.font = `${size * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🧠', size / 2, size / 2);
+
+            // Convert to blob and download
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}.png`;
+                a.click();
+            });
+        }
+
+        // Generate all sizes
+        console.log('Generating icons...');
+        [72, 96, 128, 144, 152, 192, 384, 512].forEach(size => {
+            setTimeout(() => generateIcon(size), size); // Stagger downloads
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4A90E2">
+    <meta name="description" content="Your AI-powered Second Brain">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>M2B - Second Brain</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app" class="app-container">
+
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="app-title">🧠 M2B</h1>
+            <div class="header-actions">
+                <button id="syncBtn" class="icon-btn" title="Sync">
+                    <span class="sync-icon">🔄</span>
+                </button>
+                <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="capture">
+                <span class="nav-icon">📥</span>
+                <span class="nav-label">Capture</span>
+            </button>
+            <button class="nav-btn" data-view="shopping">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Shopping</span>
+            </button>
+            <button class="nav-btn" data-view="tasks">
+                <span class="nav-icon">✅</span>
+                <span class="nav-label">Tasks</span>
+            </button>
+            <button class="nav-btn" data-view="ideas">
+                <span class="nav-icon">💡</span>
+                <span class="nav-label">Ideas</span>
+            </button>
+            <button class="nav-btn" data-view="more">
+                <span class="nav-icon">⋯</span>
+                <span class="nav-label">More</span>
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+
+            <!-- Capture View -->
+            <div id="captureView" class="view active">
+                <div class="view-header">
+                    <h2>Quick Capture</h2>
+                    <p class="view-subtitle">Type naturally - AI will classify and file it</p>
+                </div>
+
+                <div class="capture-form">
+                    <textarea
+                        id="captureInput"
+                        placeholder="Buy milk&#10;Idea: Build a recipe app&#10;Call dentist tomorrow&#10;Met Sarah - wants to collaborate"
+                        rows="6"
+                    ></textarea>
+
+                    <button id="captureBtn" class="btn btn-primary">
+                        <span class="btn-icon">📥</span>
+                        Capture
+                    </button>
+                </div>
+
+                <div id="captureQueue" class="queue-section hidden">
+                    <h3>Offline Queue</h3>
+                    <div id="queueList" class="queue-list"></div>
+                </div>
+
+                <div class="capture-examples">
+                    <h3>Examples:</h3>
+                    <ul>
+                        <li><strong>Shopping:</strong> "Buy milk, eggs, bread"</li>
+                        <li><strong>Task:</strong> "Call dentist tomorrow"</li>
+                        <li><strong>Idea:</strong> "Idea: Build plant watering tracker app"</li>
+                        <li><strong>Person:</strong> "Met John for coffee - wants to collaborate"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Shopping View -->
+            <div id="shoppingView" class="view">
+                <div class="view-header">
+                    <h2>Shopping List</h2>
+                    <button id="clearCompletedBtn" class="btn btn-small">Clear Completed</button>
+                </div>
+
+                <div id="shoppingContent" class="content-area">
+                    <div class="loading">Loading shopping list...</div>
+                </div>
+            </div>
+
+            <!-- Tasks View -->
+            <div id="tasksView" class="view">
+                <div class="view-header">
+                    <h2>Tasks</h2>
+                    <div class="tabs">
+                        <button class="tab active" data-context="personal">Personal</button>
+                        <button class="tab" data-context="work">Work</button>
+                    </div>
+                </div>
+
+                <div id="tasksContent" class="content-area">
+                    <div class="loading">Loading tasks...</div>
+                </div>
+            </div>
+
+            <!-- Ideas View -->
+            <div id="ideasView" class="view">
+                <div class="view-header">
+                    <h2>Ideas</h2>
+                    <div class="domain-filters">
+                        <button class="filter-btn active" data-domain="all">All</button>
+                        <button class="filter-btn" data-domain="tech">Tech</button>
+                        <button class="filter-btn" data-domain="business">Business</button>
+                        <button class="filter-btn" data-domain="personal">Personal</button>
+                        <button class="filter-btn" data-domain="creative">Creative</button>
+                    </div>
+                </div>
+
+                <div id="ideasContent" class="content-area">
+                    <div class="loading">Loading ideas...</div>
+                </div>
+            </div>
+
+            <!-- More View -->
+            <div id="moreView" class="view">
+                <div class="view-header">
+                    <h2>More</h2>
+                </div>
+
+                <div class="menu-list">
+                    <button class="menu-item" data-action="digest">
+                        <span class="menu-icon">📊</span>
+                        <div class="menu-content">
+                            <div class="menu-title">Daily Digest</div>
+                            <div class="menu-subtitle">See today's priorities</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="projects">
+                        <span class="menu-icon">📁</span>
+                        <div class="menu-content">
+                            <div class="menu-title">Projects</div>
+                            <div class="menu-subtitle">Active, waiting, blocked</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="people">
+                        <span class="menu-icon">👥</span>
+                        <div class="menu-content">
+                            <div class="menu-title">People</div>
+                            <div class="menu-subtitle">Contacts and relationships</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="search">
+                        <span class="menu-icon">🔍</span>
+                        <div class="menu-content">
+                            <div class="menu-title">Search</div>
+                            <div class="menu-subtitle">Find anything</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="inbox">
+                        <span class="menu-icon">📝</span>
+                        <div class="menu-content">
+                            <div class="menu-title">Inbox Log</div>
+                            <div class="menu-subtitle">Audit trail</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label for="githubToken">GitHub Token</label>
+                        <input
+                            type="password"
+                            id="githubToken"
+                            placeholder="ghp_xxxxxxxxxxxxx"
+                        >
+                        <p class="help-text">
+                            Create a token at
+                            <a href="https://github.com/settings/tokens/new" target="_blank">
+                                github.com/settings/tokens
+                            </a>
+                            with repo permissions
+                        </p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="githubRepo">Repository</label>
+                        <input
+                            type="text"
+                            id="githubRepo"
+                            placeholder="username/M2B"
+                            value="chrisbarkerza/M2B"
+                        >
+                    </div>
+
+                    <div class="setting-group">
+                        <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+                        <button id="testConnectionBtn" class="btn btn-secondary">Test Connection</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <h3>Offline Data</h3>
+                        <p>Last synced: <span id="lastSync">Never</span></p>
+                        <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Toast -->
+        <div id="toast" class="toast hidden"></div>
+
+        <!-- Offline Indicator -->
+        <div id="offlineIndicator" class="offline-indicator hidden">
+            📴 Offline - Changes will sync when online
+        </div>
+
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registered', reg))
+                .catch(err => console.log('Service Worker registration failed', err));
+        }
+    </script>
+</body>
+</html>
