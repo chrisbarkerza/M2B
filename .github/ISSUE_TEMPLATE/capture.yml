@@ -1,0 +1,18 @@
+name: 📥 Capture
+description: Capture a thought, task, idea, or note to your Second Brain
+title: ""
+labels: ["capture"]
+body:
+  - type: textarea
+    id: capture
+    attributes:
+      label: What do you want to remember?
+      description: Type naturally - AI will classify and file it automatically
+      placeholder: |
+        Examples:
+        - Buy milk and eggs
+        - Idea: Build an AI recipe app
+        - Call dentist tomorrow
+        - Met Sarah for coffee - wants to collaborate on podcast
+    validations:
+      required: true

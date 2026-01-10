@@ -1,0 +1,102 @@
+name: Process Second Brain Capture
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  process-capture:
+    # Only run if issue has 'capture' label
+    if: contains(github.event.issue.labels.*.name, 'capture')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install -g @anthropic-ai/sdk
+
+      - name: Process capture with Claude API
+        id: classify
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          node .github/scripts/process-capture.js
+
+      - name: Commit changes
+        run: |
+          git config user.name "M2B Bot"
+          git config user.email "m2b-bot@users.noreply.github.com"
+          git add .
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "M2B: Process capture from issue #${{ github.event.issue.number }}"
+            git push
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+        id: commit
+
+      - name: Comment on issue with results
+        if: steps.commit.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read the result from the classification step
+            let resultComment = '✓ **Capture processed successfully!**\n\n';
+
+            // Try to read the classification result
+            try {
+              const result = fs.readFileSync('.github/result.json', 'utf8');
+              const data = JSON.parse(result);
+
+              resultComment += `**Classification:** ${data.category}\n`;
+              resultComment += `**Confidence:** ${data.confidence}%\n`;
+              resultComment += `**Location:** \`${data.location}\`\n\n`;
+
+              if (data.additional_locations && data.additional_locations.length > 0) {
+                resultComment += `**Additional locations:**\n`;
+                data.additional_locations.forEach(loc => {
+                  resultComment += `- \`${loc}\`\n`;
+                });
+                resultComment += '\n';
+              }
+
+              resultComment += `View changes: [Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})`;
+            } catch (e) {
+              resultComment += 'See commit for details.';
+            }
+
+            // Post comment
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: resultComment
+            });
+
+            // Close the issue
+            await github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            });
