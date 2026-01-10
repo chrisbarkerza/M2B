@@ -15,7 +15,7 @@ updated: 2026-01-10
 
 ## General
 - [x] Mortein
-- [ ] Snacks
+- [x] Snacks
 
 ## Supplements
 - [x] TMG
