@@ -14,7 +14,7 @@ updated: 2026-01-10
 ## Someday/Maybe
 
 ## General
-- [x] Mortein
+- [ ] Mortein
 - [ ] Snacks
 
 ## Supplements
@@ -23,7 +23,5 @@ updated: 2026-01-10
 - [x] L-carnatine
 - [x] apples (for testing new /md structure)
 - [ ] bananas (for testing new /md structure)
-
-
 - [ ] NLC supplement
 - [ ] Vitamin D
