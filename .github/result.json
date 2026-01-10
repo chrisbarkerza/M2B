@@ -1,8 +1,8 @@
 {
-  "category": "project",
-  "confidence": 92,
-  "context": "personal",
-  "location": "md/projects/personal/active/dare.md",
+  "category": "person",
+  "confidence": 95,
+  "context": "work",
+  "location": "md/people/business/craig-patterson.md",
   "additional_locations": [
     "md/inbox/inbox-log.md"
   ]

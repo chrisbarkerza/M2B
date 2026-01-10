@@ -19,6 +19,21 @@ Each entry includes:
 
 <!-- Entries will be appended below in reverse chronological order (newest first) -->
 
+## 2026-01-10 17:13:17 [GitHub Issue #6]
+**Input**: "Craig Patterson called and said we need to get together. He's just closed Paramo
+
+Craig Patterson called and said we need to get together. He's just closed Paramount Media in Africa and is starting hi..."
+**Classification**: person
+**Confidence**: 95%
+**Context**: work
+**Locations**:
+  - md/people/business/craig-patterson.md
+  - md/inbox/inbox-log.md
+**Reason**: Contains information about a person (Craig Patterson) with relationship context and business interaction details
+
+---
+
+
 ## 2026-01-10 16:57:24 [GitHub Issue #5]
 **Input**: "set up my "dare" project and add these todo:
 
@@ -164,5 +179,20 @@ Buy apples and bananas for testing new /md structure"
   - Context: personal
   - Next actions: implement scoring system, add player view
   - Tags: game, development
+
+---
+
+## 2026-01-10 14:00:00
+**Input**: "Craig Patterson called and said we need to get together. He's just closed Paramount Media in Africa and is starting his own thing. He needs 15 million rent of funding. I set out hook him up with Rowan."
+**Classification**: person
+**Confidence**: 95%
+**Location**: md/people/business/craig-patterson.md (created)
+**Extracted**:
+  - Name: Craig Patterson
+  - Relationship: business_contact
+  - Context: work
+  - Tags: paramount_media, africa, funding, startup
+  - Last interaction: phone call 2026-01-10
+  - Key details: Closed Paramount Media Africa, starting new venture, needs 15M funding, connected with Rowan
 
 ---
