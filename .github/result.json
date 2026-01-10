@@ -1,0 +1,9 @@
+{
+  "category": "shopping",
+  "confidence": 95,
+  "context": "personal",
+  "location": "shopping.md",
+  "additional_locations": [
+    "inbox/inbox-log.md"
+  ]
+}

@@ -16,3 +16,13 @@ updated: 2026-01-10
 
 ## Someday/Maybe
 <!-- Items you're considering but not urgent. Format: - ( ) Item name -->
+
+
+## General
+- [ ] Mortein
+- [ ] Snacks
+
+## Supplements
+- [ ] TMG
+- [ ] NACL
+- [ ] L-carnatine
