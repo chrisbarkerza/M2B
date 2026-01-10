@@ -162,7 +162,7 @@ function executeFileOperations(classification) {
 }
 
 function logToInbox(classification, captureText, filesModified) {
-  const inboxLogPath = path.join(process.cwd(), 'inbox/inbox-log.md');
+  const inboxLogPath = path.join(process.cwd(), 'md/inbox/inbox-log.md');
 
   let logEntry = `\n## ${timestamp} [GitHub Issue #${issueNumber}]\n`;
   logEntry += `**Input**: "${captureText.substring(0, 200)}${captureText.length > 200 ? '...' : ''}"\n`;
