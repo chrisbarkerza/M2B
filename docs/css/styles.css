@@ -1143,3 +1143,40 @@ body {
     color: var(--text-light);
     font-size: 0.95rem;
 }
+
+/* === Digest View === */
+.digest-content {
+    line-height: 1.6;
+}
+
+.digest-content h3 {
+    font-size: 1.5rem;
+    color: var(--text-color);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.digest-section {
+    margin-bottom: 24px;
+}
+
+.digest-section h4 {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.digest-section ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.digest-section li {
+    padding: 8px 12px;
+    background: var(--bg-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    border-left: 3px solid var(--primary-color);
+}

@@ -638,13 +638,7 @@ class UI {
                 this.showFileViewer();
                 break;
             case 'digest':
-                this.showToast('Daily Digest: Run /m2b-digest in Claude Code CLI', 'info');
-                break;
-            case 'review':
-                this.showToast('Weekly Review: Run /m2b-review in Claude Code CLI', 'info');
-                break;
-            case 'fix':
-                this.showToast('Fix Classifications: Run /m2b-fix in Claude Code CLI', 'info');
+                this.showDigest();
                 break;
             case 'projects':
                 this.showProjects();
@@ -678,6 +672,86 @@ class UI {
         document.getElementById('fileTree').classList.remove('hidden');
     }
 
+    static async showDigest() {
+        const modal = document.getElementById('digestModal');
+        modal.classList.remove('hidden');
+        await this.loadDigest();
+    }
+
+    static closeDigest() {
+        document.getElementById('digestModal').classList.add('hidden');
+    }
+
+    static async loadDigest() {
+        const digestContent = document.getElementById('digestContent');
+        digestContent.innerHTML = '<div class="loading">Loading digest...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Read urgent tasks
+            const [urgentPersonal, urgentWork] = await Promise.all([
+                api.getFile('md/admin/personal/urgent.md').catch(() => ''),
+                api.getFile('md/admin/work/urgent.md').catch(() => '')
+            ]);
+
+            // Parse urgent tasks
+            const urgentTasks = [];
+            [urgentPersonal, urgentWork].forEach(content => {
+                const lines = content.split('\n');
+                lines.forEach(line => {
+                    if (line.match(/^- \[ \] \*\*(.*?)\*\*/)) {
+                        const task = line.match(/\*\*(.*?)\*\*/)[1];
+                        urgentTasks.push(task);
+                    }
+                });
+            });
+
+            // Get active projects
+            const [personalProjects, workProjects] = await Promise.all([
+                api.request('/contents/md/projects/personal/active').catch(() => []),
+                api.request('/contents/md/projects/work/active').catch(() => [])
+            ]);
+
+            const activeProjects = [...personalProjects, ...workProjects]
+                .filter(item => item.type === 'file' && item.name.endsWith('.md'))
+                .map(item => item.name.replace('.md', '').replace(/-/g, ' '));
+
+            // Build digest HTML
+            let html = `<div class="digest-content">`;
+            html += `<h3>Daily Digest - ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>`;
+
+            if (urgentTasks.length > 0) {
+                html += `<div class="digest-section">`;
+                html += `<h4>Urgent (${urgentTasks.length} ${urgentTasks.length === 1 ? 'task' : 'tasks'})</h4>`;
+                html += `<ul>`;
+                urgentTasks.forEach(task => {
+                    html += `<li>${task}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            if (activeProjects.length > 0) {
+                html += `<div class="digest-section">`;
+                html += `<h4>Active Projects (${activeProjects.length})</h4>`;
+                html += `<ul>`;
+                activeProjects.slice(0, 5).forEach(project => {
+                    html += `<li>${project}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            if (urgentTasks.length === 0 && activeProjects.length === 0) {
+                html += `<div class="empty-state">All clear! No urgent tasks or active projects.</div>`;
+            }
+
+            html += `</div>`;
+            digestContent.innerHTML = html;
+        } catch (error) {
+            digestContent.innerHTML = `<div class="error">Error loading digest: ${error.message}</div>`;
+        }
+    }
+
     static async loadFileTree() {
         const fileTree = document.getElementById('fileTree');
         fileTree.innerHTML = '<div class="loading">Loading files...</div>';
@@ -685,66 +759,61 @@ class UI {
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Define directory structure
-            const structure = [
-                { path: 'md/admin/personal', label: 'Admin - Personal' },
-                { path: 'md/admin/work', label: 'Admin - Work' },
-                { path: 'md/projects/personal/active', label: 'Projects - Personal - Active' },
-                { path: 'md/projects/personal/waiting', label: 'Projects - Personal - Waiting' },
-                { path: 'md/projects/personal/blocked', label: 'Projects - Personal - Blocked' },
-                { path: 'md/projects/personal/done', label: 'Projects - Personal - Done' },
-                { path: 'md/projects/work/active', label: 'Projects - Work - Active' },
-                { path: 'md/projects/work/waiting', label: 'Projects - Work - Waiting' },
-                { path: 'md/projects/work/blocked', label: 'Projects - Work - Blocked' },
-                { path: 'md/projects/work/done', label: 'Projects - Work - Done' },
-                { path: 'md/ideas', label: 'Ideas' },
-                { path: 'md/people', label: 'People' },
-                { path: 'md/inbox', label: 'Inbox' },
-                { path: 'md', label: 'Other Files', root: true }
-            ];
-
-            // Fetch all directories in parallel
-            const fetchPromises = structure.map(async dir => {
+            // Recursively get all md files from the md directory
+            const getAllFiles = async (path, label = null) => {
                 try {
-                    const contents = await api.request(`/contents/${dir.path}`);
-                    let files;
-                    if (dir.root) {
-                        // Get root level files only
-                        files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                    } else {
-                        files = contents.filter(item => item.type === 'file');
-                    }
-                    return { ...dir, files };
-                } catch (e) {
-                    // Directory doesn't exist or is inaccessible, return empty
-                    return { ...dir, files: [] };
-                }
-            });
+                    const contents = await api.request(`/contents/${path}`);
+                    const files = [];
+                    const subdirs = [];
 
-            const results = await Promise.all(fetchPromises);
+                    contents.forEach(item => {
+                        if (item.type === 'file' && item.name.endsWith('.md')) {
+                            files.push(item);
+                        } else if (item.type === 'dir' && item.name !== 'templates') {
+                            subdirs.push(item);
+                        }
+                    });
+
+                    const result = {
+                        path,
+                        label: label || path.replace('md/', '').replace(/\//g, ' > ').replace(/-/g, ' '),
+                        files
+                    };
+
+                    // Get files from subdirectories
+                    const subResults = await Promise.all(
+                        subdirs.map(dir => getAllFiles(dir.path))
+                    );
+
+                    return [result, ...subResults.flat()];
+                } catch (e) {
+                    return [];
+                }
+            };
+
+            const allResults = await getAllFiles('md');
+            const flatResults = allResults.flat().filter(r => r.files && r.files.length > 0);
 
             let html = '<div class="file-tree-list">';
 
-            results.forEach(dir => {
-                if (dir.files.length > 0) {
-                    html += `<div class="file-tree-folder">`;
-                    html += `<div class="file-tree-folder-name">${dir.label}</div>`;
-                    html += `<ul class="file-tree-items">`;
+            flatResults.forEach(dir => {
+                html += `<div class="file-tree-folder">`;
+                html += `<div class="file-tree-folder-name">${dir.label}</div>`;
+                html += `<ul class="file-tree-items">`;
 
-                    dir.files.forEach(file => {
-                        html += `
-                            <li class="file-tree-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
-                                <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                    <polyline points="14 2 14 8 20 8" />
-                                </svg>
-                                ${file.name}
-                            </li>
-                        `;
-                    });
+                dir.files.forEach(file => {
+                    html += `
+                        <li class="file-tree-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                            <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            ${file.name}
+                        </li>
+                    `;
+                });
 
-                    html += `</ul></div>`;
-                }
+                html += `</ul></div>`;
             });
 
             html += '</div>';
@@ -755,6 +824,33 @@ class UI {
     }
 
     static async viewFile(path, filename) {
+        const fileContent = document.getElementById('fileContent');
+        const fileTree = document.getElementById('fileTree');
+        const fileTitle = document.getElementById('fileTitle');
+        const fileContentBody = document.getElementById('fileContentBody');
+
+        fileTree.classList.add('hidden');
+        fileContent.classList.remove('hidden');
+        fileTitle.textContent = filename;
+        fileContentBody.innerHTML = '<div class="loading">Loading file...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+            const content = await api.getFile(path);
+
+            // Convert markdown to HTML (basic conversion)
+            const htmlContent = this.markdownToHtml(content);
+            fileContentBody.innerHTML = htmlContent;
+        } catch (error) {
+            fileContentBody.innerHTML = `<div class="error">Error loading file: ${error.message}</div>`;
+        }
+    }
+
+    static async viewFileInModal(path, filename) {
+        // Open file viewer modal and load file
+        const modal = document.getElementById('fileViewerModal');
+        modal.classList.remove('hidden');
+
         const fileContent = document.getElementById('fileContent');
         const fileTree = document.getElementById('fileTree');
         const fileTitle = document.getElementById('fileTitle');
@@ -886,7 +982,7 @@ class UI {
                     files.forEach(file => {
                         const name = file.name.replace('.md', '').replace(/-/g, ' ');
                         html += `
-                            <div class="project-card" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                            <div class="project-card" onclick="UI.closeProjects(); UI.viewFileInModal('${file.path}', '${file.name}')">
                                 <div class="project-title">${name}</div>
                                 <div class="project-meta">Click to view details</div>
                             </div>
@@ -970,7 +1066,7 @@ class UI {
                     files.forEach(file => {
                         const name = file.name.replace('.md', '').replace(/-/g, ' ');
                         html += `
-                            <div class="people-card" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                            <div class="people-card" onclick="UI.closePeople(); UI.viewFileInModal('${file.path}', '${file.name}')">
                                 <div class="people-icon">
                                     <svg class="icon icon-user" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
@@ -1034,8 +1130,12 @@ class UI {
                 'md/admin/work',
                 'md/projects/personal/active',
                 'md/projects/personal/waiting',
+                'md/projects/personal/blocked',
+                'md/projects/personal/done',
                 'md/projects/work/active',
                 'md/projects/work/waiting',
+                'md/projects/work/blocked',
+                'md/projects/work/done',
                 'md/ideas',
                 'md/people/professional',
                 'md/people/family',
@@ -1046,11 +1146,26 @@ class UI {
             const fetchPromises = searchPaths.map(async path => {
                 try {
                     const contents = await api.request(`/contents/${path}`);
-                    const files = contents.filter(item =>
-                        item.type === 'file' &&
-                        item.name.toLowerCase().includes(query.toLowerCase())
-                    );
-                    return files.map(f => ({ ...f, folder: path }));
+                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+
+                    // Search file contents
+                    const matchedFiles = await Promise.all(files.map(async file => {
+                        try {
+                            const content = await api.getFile(file.path);
+                            const lowerQuery = query.toLowerCase();
+                            const lowerContent = content.toLowerCase();
+                            const lowerName = file.name.toLowerCase();
+
+                            if (lowerName.includes(lowerQuery) || lowerContent.includes(lowerQuery)) {
+                                return { ...file, folder: path };
+                            }
+                            return null;
+                        } catch (e) {
+                            return null;
+                        }
+                    }));
+
+                    return matchedFiles.filter(f => f !== null);
                 } catch (e) {
                     return [];
                 }
@@ -1070,7 +1185,7 @@ class UI {
                 const name = file.name.replace('.md', '');
                 const folder = file.folder.replace('md/', '').replace(/\//g, ' > ');
                 html += `
-                    <div class="search-result-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                    <div class="search-result-item" onclick="UI.closeSearch(); UI.viewFileInModal('${file.path}', '${file.name}')">
                         <div class="search-result-name">${name}</div>
                         <div class="search-result-path">${folder}</div>
                     </div>
