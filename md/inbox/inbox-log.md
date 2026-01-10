@@ -19,6 +19,22 @@ Each entry includes:
 
 <!-- Entries will be appended below in reverse chronological order (newest first) -->
 
+## 2026-01-10 16:57:24 [GitHub Issue #5]
+**Input**: "set up my "dare" project and add these todo:
+
+- implement scoring system
+- add player view"
+**Classification**: project
+**Confidence**: 92%
+**Context**: personal
+**Locations**:
+  - md/projects/personal/active/dare.md
+  - md/inbox/inbox-log.md
+**Reason**: User explicitly mentions setting up a 'project' and provides specific todo items with technical implementation tasks
+
+---
+
+
 ## 2026-01-10 13:35:12 [GitHub Issue #4]
 **Input**: "Add to supplements: NLC and vitamin D
 
@@ -134,5 +150,19 @@ Buy apples and bananas for testing new /md structure"
   - Shopping items: NLC supplement, Vitamin D
   - Task: Enable scoring system for dare project
   - Context: personal
+
+---
+
+## 2026-01-10 14:45:30
+**Input**: "set up my 'dare' project and add these todo: - implement scoring system - add player view"
+**Classification**: project
+**Confidence**: 92%
+**Location**: md/projects/personal/active/dare.md (created)
+**Extracted**:
+  - Title: Dare
+  - Status: active
+  - Context: personal
+  - Next actions: implement scoring system, add player view
+  - Tags: game, development
 
 ---
