@@ -21,5 +21,5 @@ updated: 2026-01-10
 - [x] TMG
 - [ ] NACL
 - [x] L-carnatine
-- [ ] apples (for testing new /md structure)
+- [x] apples (for testing new /md structure)
 - [ ] bananas (for testing new /md structure)
