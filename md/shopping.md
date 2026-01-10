@@ -18,7 +18,7 @@ updated: 2026-01-10
 - [x] Snacks
 
 ## Supplements
-- [x] TMG
+- [ ] TMG
 - [ ] NACL
 - [x] L-carnatine
 - [x] apples (for testing new /md structure)
