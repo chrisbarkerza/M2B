@@ -247,6 +247,74 @@ body {
     color: var(--primary-color);
 }
 
+/* === Capture Result === */
+.capture-result {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius);
+    padding: var(--spacing);
+    margin-bottom: var(--spacing);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.capture-result .result-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.capture-result .result-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.capture-result .result-icon {
+    font-size: 1.8rem;
+}
+
+.capture-result .result-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+}
+
+.capture-result .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.capture-result .result-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.capture-result .result-value {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.capture-result .result-success {
+    color: #50C878;
+}
+
+.capture-result .result-warning {
+    color: #F39C12;
+}
+
+.capture-result .result-location {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    opacity: 0.95;
+    word-break: break-all;
+}
+
 /* === Queue Section === */
 .queue-section {
     background: #FFF3CD;

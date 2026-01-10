@@ -79,6 +79,10 @@ class GitHubAPI {
             labels: ['capture']
         });
     }
+
+    async getIssueComments(issueNumber) {
+        return this.request(`/issues/${issueNumber}/comments`);
+    }
 }
 
 // Data Parser - Parse markdown files with frontmatter
@@ -482,6 +486,10 @@ class UI {
             captureBtn.disabled = true;
             captureBtn.innerHTML = '<span class="spinner"></span> Capturing...';
 
+            // Hide result from previous capture
+            const resultDiv = document.getElementById('captureResult');
+            resultDiv?.classList.add('hidden');
+
             try {
                 const lines = text.split('\n');
                 const title = lines[0].trim().slice(0, 80) || 'Capture';
@@ -489,8 +497,14 @@ class UI {
 
                 if (AppState.isOnline && AppState.token) {
                     const api = new GitHubAPI(AppState.token, AppState.repo);
-                    await api.createIssue(title, body);
+                    const issue = await api.createIssue(title, body);
                     this.showToast('Captured! Processing...', 'success');
+
+                    // Clear input immediately
+                    captureInput.value = '';
+
+                    // Poll for result
+                    this.pollForCaptureResult(api, issue.number, resultDiv);
                 } else {
                     await QueueManager.enqueue({
                         type: 'capture',
@@ -498,9 +512,8 @@ class UI {
                         description: text.substring(0, 50) + '...'
                     });
                     this.showToast('Queued for sync', 'info');
+                    captureInput.value = '';
                 }
-
-                captureInput.value = '';
             } catch (error) {
                 this.showToast('Capture failed: ' + error.message, 'error');
             } finally {
@@ -1563,6 +1576,110 @@ class UI {
 
         // Update settings queue status
         this.updateSyncStatus();
+    }
+
+    static async pollForCaptureResult(api, issueNumber, resultDiv) {
+        const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+        let attempts = 0;
+
+        const poll = async () => {
+            attempts++;
+
+            try {
+                const comments = await api.getIssueComments(issueNumber);
+
+                // Look for the bot comment with classification result
+                const botComment = comments.find(comment =>
+                    comment.user.login.includes('bot') ||
+                    comment.user.login.includes('github-actions') ||
+                    comment.body.includes('✓ **Capture processed successfully!**')
+                );
+
+                if (botComment) {
+                    // Parse the result from the comment
+                    const body = botComment.body;
+                    const categoryMatch = body.match(/\*\*Classification:\*\* (\w+)/);
+                    const confidenceMatch = body.match(/\*\*Confidence:\*\* (\d+)%/);
+                    const locationMatch = body.match(/\*\*Location:\*\* `([^`]+)`/);
+
+                    const category = categoryMatch ? categoryMatch[1] : 'unknown';
+                    const confidence = confidenceMatch ? confidenceMatch[1] : '?';
+                    const location = locationMatch ? locationMatch[1] : 'unknown';
+
+                    // Show the result
+                    this.displayCaptureResult(resultDiv, {
+                        category,
+                        confidence,
+                        location
+                    });
+
+                    return; // Stop polling
+                }
+
+                // Continue polling if not found yet and under max attempts
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, 2000); // Poll every 2 seconds
+                } else {
+                    // Timeout
+                    this.showToast('Processing taking longer than expected...', 'info');
+                }
+            } catch (error) {
+                console.error('Error polling for result:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, 2000);
+                }
+            }
+        };
+
+        // Start polling
+        setTimeout(poll, 2000); // Wait 2 seconds before first poll
+    }
+
+    static displayCaptureResult(resultDiv, result) {
+        if (!resultDiv) return;
+
+        const confidenceColor = result.confidence >= 75 ? 'success' : 'warning';
+        const categoryIcons = {
+            shopping: '🛒',
+            admin_urgent: '🔥',
+            admin_longer_term: '📅',
+            project: '📁',
+            person: '👤',
+            idea: '💡',
+            note: '📝'
+        };
+
+        const icon = categoryIcons[result.category] || '✓';
+
+        const resultContent = resultDiv.querySelector('.result-content');
+        resultContent.innerHTML = `
+            <div class="result-header">
+                <span class="result-icon">${icon}</span>
+                <strong>Capture Classified!</strong>
+            </div>
+            <div class="result-details">
+                <div class="result-row">
+                    <span class="result-label">Type:</span>
+                    <span class="result-value">${result.category.replace(/_/g, ' ')}</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Confidence:</span>
+                    <span class="result-value result-${confidenceColor}">${result.confidence}%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Saved to:</span>
+                    <span class="result-value result-location">${result.location}</span>
+                </div>
+            </div>
+        `;
+
+        resultDiv.classList.remove('hidden');
+
+        // Show success toast
+        this.showToast(`Classified as ${result.category} (${result.confidence}% confidence)`, 'success');
+
+        // Scroll result into view smoothly
+        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     static showToast(message, type = 'info') {
