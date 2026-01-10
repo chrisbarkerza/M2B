@@ -226,6 +226,7 @@ class UI {
         this.setupOnlineStatus();
         this.setupTaskTabs();
         this.setupDomainFilters();
+        this.setupMoreMenu();
 
         // Load data if token exists
         if (AppState.token) {
@@ -349,6 +350,7 @@ class UI {
                 const { pipeline, env } = await loadTransformers();
                 env.allowLocalModels = false;
                 env.useBrowserCache = true;
+                env.logLevel = 'fatal'; // Suppress ONNX Runtime warnings
                 return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
             })();
             return transcriberPromise;
@@ -619,6 +621,205 @@ class UI {
                 this.renderIdeas();
             });
         });
+    }
+
+    static setupMoreMenu() {
+        document.querySelectorAll('.menu-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                this.handleMoreAction(action);
+            });
+        });
+    }
+
+    static handleMoreAction(action) {
+        switch (action) {
+            case 'files':
+                this.showFileViewer();
+                break;
+            case 'digest':
+                this.showToast('Daily Digest: Run /m2b-digest in Claude Code CLI', 'info');
+                break;
+            case 'review':
+                this.showToast('Weekly Review: Run /m2b-review in Claude Code CLI', 'info');
+                break;
+            case 'fix':
+                this.showToast('Fix Classifications: Run /m2b-fix in Claude Code CLI', 'info');
+                break;
+            case 'projects':
+                this.showToast('Projects view coming soon', 'info');
+                break;
+            case 'people':
+                this.showToast('People view coming soon', 'info');
+                break;
+            case 'search':
+                this.showToast('Search coming soon', 'info');
+                break;
+            case 'inbox':
+                this.showInboxLog();
+                break;
+        }
+    }
+
+    static async showFileViewer() {
+        const modal = document.getElementById('fileViewerModal');
+        modal.classList.remove('hidden');
+        await this.loadFileTree();
+    }
+
+    static closeFileViewer() {
+        document.getElementById('fileViewerModal').classList.add('hidden');
+        document.getElementById('fileContent').classList.add('hidden');
+        document.getElementById('fileTree').classList.remove('hidden');
+    }
+
+    static closeFileContent() {
+        document.getElementById('fileContent').classList.add('hidden');
+        document.getElementById('fileTree').classList.remove('hidden');
+    }
+
+    static async loadFileTree() {
+        const fileTree = document.getElementById('fileTree');
+        fileTree.innerHTML = '<div class="loading">Loading files...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Define directory structure
+            const structure = [
+                { path: 'md/admin/personal', label: 'Admin - Personal' },
+                { path: 'md/admin/work', label: 'Admin - Work' },
+                { path: 'md/projects/personal/active', label: 'Projects - Personal - Active' },
+                { path: 'md/projects/personal/waiting', label: 'Projects - Personal - Waiting' },
+                { path: 'md/projects/personal/blocked', label: 'Projects - Personal - Blocked' },
+                { path: 'md/projects/personal/done', label: 'Projects - Personal - Done' },
+                { path: 'md/projects/work/active', label: 'Projects - Work - Active' },
+                { path: 'md/projects/work/waiting', label: 'Projects - Work - Waiting' },
+                { path: 'md/projects/work/blocked', label: 'Projects - Work - Blocked' },
+                { path: 'md/projects/work/done', label: 'Projects - Work - Done' },
+                { path: 'md/ideas', label: 'Ideas' },
+                { path: 'md/people', label: 'People' },
+                { path: 'md/inbox', label: 'Inbox' },
+                { path: 'md', label: 'Other Files', root: true }
+            ];
+
+            let html = '<div class="file-tree-list">';
+
+            for (const dir of structure) {
+                try {
+                    let files;
+                    if (dir.root) {
+                        // Get root level files only
+                        const contents = await api.request(`/contents/${dir.path}`);
+                        files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                    } else {
+                        const contents = await api.request(`/contents/${dir.path}`);
+                        files = contents.filter(item => item.type === 'file');
+                    }
+
+                    if (files.length > 0) {
+                        html += `<div class="file-tree-folder">`;
+                        html += `<div class="file-tree-folder-name">${dir.label}</div>`;
+                        html += `<ul class="file-tree-items">`;
+
+                        files.forEach(file => {
+                            html += `
+                                <li class="file-tree-item" onclick="UI.viewFile('${file.path}', '${file.name}')">
+                                    <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                    </svg>
+                                    ${file.name}
+                                </li>
+                            `;
+                        });
+
+                        html += `</ul></div>`;
+                    }
+                } catch (e) {
+                    // Directory doesn't exist, skip it
+                }
+            }
+
+            html += '</div>';
+            fileTree.innerHTML = html;
+        } catch (error) {
+            fileTree.innerHTML = `<div class="error">Error loading files: ${error.message}</div>`;
+        }
+    }
+
+    static async viewFile(path, filename) {
+        const fileContent = document.getElementById('fileContent');
+        const fileTree = document.getElementById('fileTree');
+        const fileTitle = document.getElementById('fileTitle');
+        const fileContentBody = document.getElementById('fileContentBody');
+
+        fileTree.classList.add('hidden');
+        fileContent.classList.remove('hidden');
+        fileTitle.textContent = filename;
+        fileContentBody.innerHTML = '<div class="loading">Loading file...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+            const content = await api.getFile(path);
+
+            // Convert markdown to HTML (basic conversion)
+            const htmlContent = this.markdownToHtml(content);
+            fileContentBody.innerHTML = htmlContent;
+        } catch (error) {
+            fileContentBody.innerHTML = `<div class="error">Error loading file: ${error.message}</div>`;
+        }
+    }
+
+    static markdownToHtml(markdown) {
+        // Basic markdown to HTML conversion
+        let html = markdown;
+
+        // Headers
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // Bold
+        html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+
+        // Italic
+        html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+        // Links
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" target="_blank">$1</a>');
+
+        // Checkboxes
+        html = html.replace(/- \[ \] (.*$)/gim, '<div class="checkbox-item"><input type="checkbox" disabled> $1</div>');
+        html = html.replace(/- \[x\] (.*$)/gim, '<div class="checkbox-item"><input type="checkbox" checked disabled> $1</div>');
+
+        // Lists
+        html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+
+        // Code blocks
+        html = html.replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>');
+
+        // Line breaks
+        html = html.replace(/\n/gim, '<br>');
+
+        return html;
+    }
+
+    static async showInboxLog() {
+        this.showToast('Loading inbox log...', 'info');
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+            const content = await api.getFile('md/inbox/inbox-log.md');
+
+            // Show in file viewer
+            this.showFileViewer();
+            document.getElementById('fileTree').classList.add('hidden');
+            document.getElementById('fileContent').classList.remove('hidden');
+            document.getElementById('fileTitle').textContent = 'inbox-log.md';
+            document.getElementById('fileContentBody').innerHTML = this.markdownToHtml(content);
+        } catch (error) {
+            this.showToast('Error loading inbox log: ' + error.message, 'error');
+        }
     }
 
     static async syncData() {

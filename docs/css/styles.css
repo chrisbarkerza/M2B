@@ -803,6 +803,137 @@ body {
     margin-bottom: 16px;
 }
 
+/* === File Viewer Modal === */
+.modal-large {
+    max-width: 800px;
+}
+
+.file-tree {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.file-tree-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.file-tree-folder {
+    margin-bottom: 8px;
+}
+
+.file-tree-folder-name {
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 8px 0;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.file-tree-items {
+    list-style: none;
+    padding-left: 16px;
+}
+
+.file-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+.file-tree-item:hover {
+    background: var(--bg-color);
+}
+
+.file-tree-item .icon {
+    color: var(--primary-color);
+}
+
+.file-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.file-content-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 16px;
+}
+
+.file-content-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.markdown-content {
+    line-height: 1.8;
+    color: var(--text-color);
+}
+
+.markdown-content h1 {
+    font-size: 1.8rem;
+    margin: 24px 0 16px 0;
+    color: var(--text-color);
+}
+
+.markdown-content h2 {
+    font-size: 1.5rem;
+    margin: 20px 0 12px 0;
+    color: var(--text-color);
+}
+
+.markdown-content h3 {
+    font-size: 1.2rem;
+    margin: 16px 0 8px 0;
+    color: var(--text-color);
+}
+
+.markdown-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+.markdown-content pre {
+    background: var(--bg-color);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.markdown-content code {
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.markdown-content li {
+    margin: 4px 0;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin: 0;
+}
+
 /* === Responsive === */
 @media (min-width: 768px) {
     .app-container {

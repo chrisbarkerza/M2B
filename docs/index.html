@@ -211,6 +211,22 @@
                 </div>
 
                 <div class="menu-list">
+                    <button class="menu-item" data-action="files">
+                        <span class="menu-icon">
+                            <svg class="icon icon-file-text" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <line x1="10" y1="9" x2="8" y2="9" />
+                            </svg>
+                        </span>
+                        <div class="menu-content">
+                            <div class="menu-title">View Files</div>
+                            <div class="menu-subtitle">Browse all markdown files</div>
+                        </div>
+                    </button>
+
                     <button class="menu-item" data-action="digest">
                         <span class="menu-icon">
                             <svg class="icon icon-bar-chart-3" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -223,6 +239,34 @@
                         <div class="menu-content">
                             <div class="menu-title">Daily Digest</div>
                             <div class="menu-subtitle">See today's priorities</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="review">
+                        <span class="menu-icon">
+                            <svg class="icon icon-calendar-check" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect width="18" height="18" x="3" y="4" rx="2" />
+                                <path d="M16 2v4" />
+                                <path d="M8 2v4" />
+                                <path d="M3 10h18" />
+                                <path d="m9 16 2 2 4-4" />
+                            </svg>
+                        </span>
+                        <div class="menu-content">
+                            <div class="menu-title">Weekly Review</div>
+                            <div class="menu-subtitle">System health check</div>
+                        </div>
+                    </button>
+
+                    <button class="menu-item" data-action="fix">
+                        <span class="menu-icon">
+                            <svg class="icon icon-wrench" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                            </svg>
+                        </span>
+                        <div class="menu-content">
+                            <div class="menu-title">Fix Classifications</div>
+                            <div class="menu-subtitle">Correct misclassifications</div>
                         </div>
                     </button>
 
@@ -327,6 +371,35 @@
                         <h3>Offline Data</h3>
                         <p>Last synced: <span id="lastSync">Never</span></p>
                         <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Viewer Modal -->
+        <div id="fileViewerModal" class="modal hidden">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Markdown Files</h2>
+                    <button class="close-btn" onclick="UI.closeFileViewer()">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="fileTree" class="file-tree">
+                        <div class="loading">Loading files...</div>
+                    </div>
+                    <div id="fileContent" class="file-content hidden">
+                        <div class="file-content-header">
+                            <button class="btn btn-small" onclick="UI.closeFileContent()">
+                                <svg class="icon icon-arrow-left" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m12 19-7-7 7-7" />
+                                    <path d="M19 12H5" />
+                                </svg>
+                                Back to list
+                            </button>
+                            <h3 id="fileTitle"></h3>
+                        </div>
+                        <div id="fileContentBody" class="markdown-content"></div>
                     </div>
                 </div>
             </div>
