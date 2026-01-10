@@ -28,7 +28,7 @@ class GitHubAPI {
         this.baseUrl = `https://api.github.com/repos/${repo}`;
     }
 
-    async request(endpoint, method = 'GET', body = null) {
+    async request(endpoint, method = 'GET', body = null, silent = false) {
         const headers = {
             'Authorization': `token ${this.token}`,
             'Accept': 'application/vnd.github.v3+json'
@@ -42,6 +42,9 @@ class GitHubAPI {
 
         const response = await fetch(`${this.baseUrl}${endpoint}`, options);
         if (!response.ok) {
+            if (silent && response.status === 404) {
+                return null;
+            }
             throw new Error(`GitHub API error: ${response.statusText}`);
         }
         return response.json();
@@ -225,7 +228,7 @@ class UI {
         this.setupSettings();
         this.setupOnlineStatus();
         this.setupTaskTabs();
-        this.setupDomainFilters();
+        this.setupProjectTabs();
         this.setupMoreMenu();
 
         // Load data if token exists
@@ -267,8 +270,8 @@ class UI {
             this.loadShopping();
         } else if (viewName === 'tasks' && !AppState.data.tasks[AppState.currentContext].urgent) {
             this.loadTasks(AppState.currentContext);
-        } else if (viewName === 'ideas' && AppState.data.ideas.length === 0) {
-            this.loadIdeas();
+        } else if (viewName === 'projects') {
+            this.loadProjectsView('active');
         }
     }
 
@@ -611,14 +614,13 @@ class UI {
         });
     }
 
-    static setupDomainFilters() {
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const domain = btn.dataset.domain;
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                AppState.currentDomain = domain;
-                this.renderIdeas();
+    static setupProjectTabs() {
+        document.querySelectorAll('#projectsView .tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const status = tab.dataset.status;
+                document.querySelectorAll('#projectsView .tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.loadProjectsView(status);
             });
         });
     }
@@ -640,8 +642,8 @@ class UI {
             case 'digest':
                 this.showDigest();
                 break;
-            case 'projects':
-                this.showProjects();
+            case 'ideas':
+                this.showIdeasModal();
                 break;
             case 'people':
                 this.showPeople();
@@ -709,11 +711,11 @@ class UI {
 
             // Get active projects
             const [personalProjects, workProjects] = await Promise.all([
-                api.request('/contents/md/projects/personal/active').catch(() => []),
-                api.request('/contents/md/projects/work/active').catch(() => [])
+                api.request('/contents/md/projects/personal/active', 'GET', null, true),
+                api.request('/contents/md/projects/work/active', 'GET', null, true)
             ]);
 
-            const activeProjects = [...personalProjects, ...workProjects]
+            const activeProjects = [...(personalProjects || []), ...(workProjects || [])]
                 .filter(item => item.type === 'file' && item.name.endsWith('.md'))
                 .map(item => item.name.replace('.md', '').replace(/-/g, ' '));
 
@@ -761,34 +763,32 @@ class UI {
 
             // Recursively get all md files from the md directory
             const getAllFiles = async (path, label = null) => {
-                try {
-                    const contents = await api.request(`/contents/${path}`);
-                    const files = [];
-                    const subdirs = [];
+                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
+                if (!contents) return [];
 
-                    contents.forEach(item => {
-                        if (item.type === 'file' && item.name.endsWith('.md')) {
-                            files.push(item);
-                        } else if (item.type === 'dir' && item.name !== 'templates') {
-                            subdirs.push(item);
-                        }
-                    });
+                const files = [];
+                const subdirs = [];
 
-                    const result = {
-                        path,
-                        label: label || path.replace('md/', '').replace(/\//g, ' > ').replace(/-/g, ' '),
-                        files
-                    };
+                contents.forEach(item => {
+                    if (item.type === 'file' && item.name.endsWith('.md')) {
+                        files.push(item);
+                    } else if (item.type === 'dir' && item.name !== 'templates' && item.name !== 'notes') {
+                        subdirs.push(item);
+                    }
+                });
 
-                    // Get files from subdirectories
-                    const subResults = await Promise.all(
-                        subdirs.map(dir => getAllFiles(dir.path))
-                    );
+                const result = {
+                    path,
+                    label: label || path.replace('md/', '').replace(/\//g, ' > ').replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' > '),
+                    files
+                };
 
-                    return [result, ...subResults.flat()];
-                } catch (e) {
-                    return [];
-                }
+                // Get files from subdirectories
+                const subResults = await Promise.all(
+                    subdirs.map(dir => getAllFiles(dir.path))
+                );
+
+                return [result, ...subResults.flat()];
             };
 
             const allResults = await getAllFiles('md');
@@ -960,13 +960,10 @@ class UI {
             ];
 
             const fetchPromises = paths.map(async ({ path, context }) => {
-                try {
-                    const contents = await api.request(`/contents/${path}`);
-                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                    return { context, files };
-                } catch (e) {
-                    return { context, files: [] };
-                }
+                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
+                if (!contents) return { context, files: [] };
+                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                return { context, files };
             });
 
             const results = await Promise.all(fetchPromises);
@@ -1003,6 +1000,60 @@ class UI {
         }
     }
 
+    static async loadProjectsView(status) {
+        const projectsContent = document.getElementById('projectsContent');
+        projectsContent.innerHTML = '<div class="loading">Loading projects...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Fetch from both personal and work
+            const paths = [
+                { path: `md/projects/personal/${status}`, context: 'Personal' },
+                { path: `md/projects/work/${status}`, context: 'Work' }
+            ];
+
+            const fetchPromises = paths.map(async ({ path, context }) => {
+                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
+                if (!contents) return { context, files: [] };
+                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                return { context, files };
+            });
+
+            const results = await Promise.all(fetchPromises);
+
+            let html = '';
+
+            results.forEach(({ context, files }) => {
+                if (files.length > 0) {
+                    html += `<div class="project-section">
+                        <h3>${context}</h3>
+                        <div class="project-cards">`;
+
+                    files.forEach(file => {
+                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
+                        html += `
+                            <div class="project-card" onclick="UI.viewFileInModal('${file.path}', '${file.name}')">
+                                <div class="project-title">${name}</div>
+                                <div class="project-meta">Click to view details</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                }
+            });
+
+            if (html === '') {
+                html = `<div class="empty-state">No ${status} projects found.</div>`;
+            }
+
+            projectsContent.innerHTML = html;
+        } catch (error) {
+            projectsContent.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
+        }
+    }
+
     static async showPeople() {
         const modal = document.getElementById('peopleModal');
         modal.classList.remove('hidden');
@@ -1035,6 +1086,7 @@ class UI {
             let paths = [];
             if (category === 'all') {
                 paths = [
+                    { path: 'md/people/business', label: 'Business' },
                     { path: 'md/people/professional', label: 'Professional' },
                     { path: 'md/people/family', label: 'Family' },
                     { path: 'md/people/friends', label: 'Friends' }
@@ -1044,13 +1096,10 @@ class UI {
             }
 
             const fetchPromises = paths.map(async ({ path, label }) => {
-                try {
-                    const contents = await api.request(`/contents/${path}`);
-                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                    return { label, files };
-                } catch (e) {
-                    return { label, files: [] };
-                }
+                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
+                if (!contents) return { label, files: [] };
+                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                return { label, files };
             });
 
             const results = await Promise.all(fetchPromises);
@@ -1137,6 +1186,7 @@ class UI {
                 'md/projects/work/blocked',
                 'md/projects/work/done',
                 'md/ideas',
+                'md/people/business',
                 'md/people/professional',
                 'md/people/family',
                 'md/people/friends',
@@ -1144,31 +1194,29 @@ class UI {
             ];
 
             const fetchPromises = searchPaths.map(async path => {
-                try {
-                    const contents = await api.request(`/contents/${path}`);
-                    const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
+                if (!contents) return [];
 
-                    // Search file contents
-                    const matchedFiles = await Promise.all(files.map(async file => {
-                        try {
-                            const content = await api.getFile(file.path);
-                            const lowerQuery = query.toLowerCase();
-                            const lowerContent = content.toLowerCase();
-                            const lowerName = file.name.toLowerCase();
+                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
 
-                            if (lowerName.includes(lowerQuery) || lowerContent.includes(lowerQuery)) {
-                                return { ...file, folder: path };
-                            }
-                            return null;
-                        } catch (e) {
-                            return null;
+                // Search file contents
+                const matchedFiles = await Promise.all(files.map(async file => {
+                    try {
+                        const content = await api.getFile(file.path);
+                        const lowerQuery = query.toLowerCase();
+                        const lowerContent = content.toLowerCase();
+                        const lowerName = file.name.toLowerCase();
+
+                        if (lowerName.includes(lowerQuery) || lowerContent.includes(lowerQuery)) {
+                            return { ...file, folder: path };
                         }
-                    }));
+                        return null;
+                    } catch (e) {
+                        return null;
+                    }
+                }));
 
-                    return matchedFiles.filter(f => f !== null);
-                } catch (e) {
-                    return [];
-                }
+                return matchedFiles.filter(f => f !== null);
             });
 
             const results = await Promise.all(fetchPromises);
@@ -1383,6 +1431,61 @@ class UI {
         html += '</div></div>';
 
         content.innerHTML = html;
+    }
+
+    static async showIdeasModal() {
+        // Create a modal for Ideas
+        const modal = document.createElement('div');
+        modal.id = 'ideasModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Ideas</h3>
+                    <button class="close-btn" onclick="UI.closeIdeasModal()">
+                        <svg class="icon icon-x" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="domain-filters">
+                    <button class="filter-btn active" data-domain="all">All</button>
+                    <button class="filter-btn" data-domain="tech">Tech</button>
+                    <button class="filter-btn" data-domain="business">Business</button>
+                    <button class="filter-btn" data-domain="personal">Personal</button>
+                    <button class="filter-btn" data-domain="creative">Creative</button>
+                </div>
+                <div id="ideasModalContent" class="modal-body">
+                    <div class="placeholder">Ideas coming soon...</div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('ideasModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.appendChild(modal);
+        modal.classList.remove('hidden');
+
+        // Setup filter buttons
+        modal.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                // TODO: Filter ideas by domain
+            });
+        });
+    }
+
+    static closeIdeasModal() {
+        const modal = document.getElementById('ideasModal');
+        if (modal) {
+            modal.remove();
+        }
     }
 
     static async loadIdeas() {

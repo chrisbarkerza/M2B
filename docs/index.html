@@ -80,15 +80,13 @@
                 </span>
                 <span class="nav-label">Tasks</span>
             </button>
-            <button class="nav-btn" data-view="ideas">
+            <button class="nav-btn" data-view="projects">
                 <span class="nav-icon">
-                    <svg class="icon icon-lightbulb" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-                        <path d="M9 18h6" />
-                        <path d="M10 22h4" />
+                    <svg class="icon icon-folder" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
                     </svg>
                 </span>
-                <span class="nav-label">Ideas</span>
+                <span class="nav-label">Projects</span>
             </button>
             <button class="nav-btn" data-view="more">
                 <span class="nav-icon">
@@ -187,20 +185,19 @@
             </div>
 
             <!-- Ideas View -->
-            <div id="ideasView" class="view">
+            <div id="projectsView" class="view">
                 <div class="view-header">
-                    <h2>Ideas</h2>
-                    <div class="domain-filters">
-                        <button class="filter-btn active" data-domain="all">All</button>
-                        <button class="filter-btn" data-domain="tech">Tech</button>
-                        <button class="filter-btn" data-domain="business">Business</button>
-                        <button class="filter-btn" data-domain="personal">Personal</button>
-                        <button class="filter-btn" data-domain="creative">Creative</button>
+                    <h2>Projects</h2>
+                    <div class="tab-bar">
+                        <button class="tab active" data-status="active">Active</button>
+                        <button class="tab" data-status="waiting">Waiting</button>
+                        <button class="tab" data-status="blocked">Blocked</button>
+                        <button class="tab" data-status="done">Done</button>
                     </div>
                 </div>
 
-                <div id="ideasContent" class="content-area">
-                    <div class="loading">Loading ideas...</div>
+                <div id="projectsContent" class="content-area">
+                    <div class="loading">Loading projects...</div>
                 </div>
             </div>
 
@@ -242,15 +239,17 @@
                         </div>
                     </button>
 
-                    <button class="menu-item" data-action="projects">
+                    <button class="menu-item" data-action="ideas">
                         <span class="menu-icon">
-                            <svg class="icon icon-folder" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+                            <svg class="icon icon-lightbulb" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+                                <path d="M9 18h6" />
+                                <path d="M10 22h4" />
                             </svg>
                         </span>
                         <div class="menu-content">
-                            <div class="menu-title">Projects</div>
-                            <div class="menu-subtitle">Active, waiting, blocked</div>
+                            <div class="menu-title">Ideas</div>
+                            <div class="menu-subtitle">Capture your thoughts</div>
                         </div>
                     </button>
 
@@ -426,6 +425,7 @@
                 <div class="modal-body">
                     <div class="tabs">
                         <button class="tab active" data-category="all">All</button>
+                        <button class="tab" data-category="business">Business</button>
                         <button class="tab" data-category="professional">Professional</button>
                         <button class="tab" data-category="family">Family</button>
                         <button class="tab" data-category="friends">Friends</button>
