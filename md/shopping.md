@@ -20,7 +20,7 @@ updated: 2026-01-10
 ## Supplements
 - [x] TMG
 - [ ] NACL
-- [x] L-carnatine
+- [ ] L-carnatine
 - [x] apples (for testing new /md structure)
 - [ ] bananas (for testing new /md structure)
 - [ ] NLC supplement
