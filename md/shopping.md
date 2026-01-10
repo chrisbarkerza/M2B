@@ -14,7 +14,7 @@ updated: 2026-01-10
 ## Someday/Maybe
 
 ## General
-- [ ] Mortein
+- [x] Mortein
 - [ ] Snacks
 
 ## Supplements
