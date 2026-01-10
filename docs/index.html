@@ -341,7 +341,11 @@
                     <div class="setting-group">
                         <h3>Offline Data</h3>
                         <p>Last synced: <span id="lastSync">Never</span></p>
-                        <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
+                        <p id="queueStatus" style="display: none;">Pending changes: <span id="queueCount">0</span></p>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="forceSyncBtn" class="btn btn-primary">Force Sync</button>
+                            <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
+                        </div>
                     </div>
                 </div>
             </div>

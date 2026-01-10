@@ -565,6 +565,25 @@ class UI {
             }
         });
 
+        document.getElementById('forceSyncBtn').addEventListener('click', async () => {
+            const syncBtn = document.getElementById('forceSyncBtn');
+            const originalText = syncBtn.textContent;
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Syncing...';
+
+            try {
+                await QueueManager.processQueue();
+                localStorage.setItem('last_sync', new Date().toISOString());
+                this.updateSyncStatus();
+                this.showToast('Sync completed', 'success');
+            } catch (error) {
+                this.showToast('Sync failed: ' + error.message, 'error');
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.textContent = originalText;
+            }
+        });
+
         document.getElementById('clearCacheBtn').addEventListener('click', () => {
             if (confirm('Clear all cached data?')) {
                 AppState.data = {
@@ -582,7 +601,31 @@ class UI {
     static showSettings() {
         document.getElementById('githubToken').value = AppState.token;
         document.getElementById('githubRepo').value = AppState.repo;
+        this.updateSyncStatus();
         document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    static updateSyncStatus() {
+        const lastSync = localStorage.getItem('last_sync');
+        const lastSyncEl = document.getElementById('lastSync');
+
+        if (lastSync) {
+            const date = new Date(lastSync);
+            lastSyncEl.textContent = date.toLocaleString();
+        } else {
+            lastSyncEl.textContent = 'Never';
+        }
+
+        const queueCount = AppState.queue.length;
+        const queueStatus = document.getElementById('queueStatus');
+        const queueCountEl = document.getElementById('queueCount');
+
+        if (queueCount > 0) {
+            queueCountEl.textContent = queueCount;
+            queueStatus.style.display = 'block';
+        } else {
+            queueStatus.style.display = 'none';
+        }
     }
 
     static setupOnlineStatus() {
@@ -1265,7 +1308,7 @@ class UI {
             }
 
             localStorage.setItem('last_sync', new Date().toISOString());
-            document.getElementById('lastSync').textContent = new Date().toLocaleString();
+            this.updateSyncStatus();
             this.showToast('Synced', 'success');
         } catch (error) {
             this.showToast('Sync failed: ' + error.message, 'error');
@@ -1503,21 +1546,23 @@ class UI {
 
         if (AppState.queue.length === 0) {
             queueSection.classList.add('hidden');
-            return;
+        } else {
+            queueSection.classList.remove('hidden');
+            queueList.innerHTML = AppState.queue.map(item => `
+                <div class="queue-item">
+                    <span class="queue-icon">
+                        <svg class="icon icon-clock" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 6v6l4 2" />
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                    </span>
+                    <span class="queue-text">${item.description}</span>
+                </div>
+            `).join('');
         }
 
-        queueSection.classList.remove('hidden');
-        queueList.innerHTML = AppState.queue.map(item => `
-            <div class="queue-item">
-                <span class="queue-icon">
-                    <svg class="icon icon-clock" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M12 6v6l4 2" />
-                        <circle cx="12" cy="12" r="10" />
-                    </svg>
-                </span>
-                <span class="queue-text">${item.description}</span>
-            </div>
-        `).join('');
+        // Update settings queue status
+        this.updateSyncStatus();
     }
 
     static showToast(message, type = 'info') {
