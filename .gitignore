@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Claude cache (if skills create local cache)
+.claude/cache/
+.claude/tmp/
+
+# Backup files
+*.bak
+*.backup
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache (if any Python scripts added later)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node modules (if any JavaScript scripts added later)
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# Log files
+*.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
