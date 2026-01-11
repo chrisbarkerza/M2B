@@ -820,6 +820,22 @@ body {
     animation: slideUp 0.3s;
 }
 
+.modal.fullscreen-modal {
+    background: var(--bg-color);
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.modal.fullscreen-modal .modal-content {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 @keyframes slideUp {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
