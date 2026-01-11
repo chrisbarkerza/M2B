@@ -224,6 +224,7 @@ class UI {
         this.setupTaskTabs();
         this.setupProjectTabs();
         this.setupMoreMenu();
+        this.setupActionButtons();
 
         // Load data if token exists
         if (AppState.token) {
@@ -264,8 +265,10 @@ class UI {
             this.loadShopping();
         } else if (viewName === 'tasks' && !AppState.data.todo) {
             this.loadTasks();
+        } else if (viewName === 'notes') {
+            this.loadNotes();
         } else if (viewName === 'projects') {
-            this.loadProjectsView();
+            this.loadProjects();
         }
     }
 
@@ -667,6 +670,9 @@ class UI {
 
     static handleMoreAction(action) {
         switch (action) {
+            case 'tasks':
+                this.switchView('tasks');
+                break;
             case 'files':
                 this.showFileViewer();
                 break;
@@ -679,6 +685,185 @@ class UI {
             case 'inbox':
                 this.showInboxLog();
                 break;
+        }
+    }
+
+    static setupActionButtons() {
+        // Clear Completed button for shopping list (currently unused since items auto-move)
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+        if (clearCompletedBtn) {
+            clearCompletedBtn.addEventListener('click', async () => {
+                // Since items are now moved immediately on check, this button is less relevant
+                // But we can use it to clear all checked items at once
+                await this.clearCompletedShopping();
+            });
+        }
+
+        // Archive Completed button for tasks
+        const archiveCompletedBtn = document.getElementById('archiveCompletedBtn');
+        if (archiveCompletedBtn) {
+            archiveCompletedBtn.addEventListener('click', async () => {
+                await this.archiveCompletedTasks();
+            });
+        }
+
+        // Sync button
+        const syncBtn = document.getElementById('syncBtn');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', () => {
+                this.syncData();
+            });
+        }
+    }
+
+    static async clearCompletedShopping() {
+        // This is now mostly a no-op since items are moved on check
+        // But we'll keep it for clearing any remaining checked items
+        let hasChecked = false;
+        Object.values(AppState.data.shopping.sections).forEach(items => {
+            if (items.some(item => item.checked)) {
+                hasChecked = true;
+            }
+        });
+
+        if (!hasChecked) {
+            this.showToast('No completed items to clear', 'info');
+            return;
+        }
+
+        // Move all checked items to done
+        for (const [section, items] of Object.entries(AppState.data.shopping.sections)) {
+            for (let i = items.length - 1; i >= 0; i--) {
+                if (items[i].checked) {
+                    await this.moveShoppingItemToDone(section, i);
+                }
+            }
+        }
+    }
+
+    static async archiveCompletedTasks() {
+        // Get all checked tasks
+        const checkedTasks = [];
+        const checkboxes = document.querySelectorAll('#tasksContent input[type="checkbox"]:checked');
+
+        if (checkboxes.length === 0) {
+            this.showToast('No completed tasks to archive', 'info');
+            return;
+        }
+
+        checkboxes.forEach(checkbox => {
+            const section = checkbox.dataset.section;
+            const index = parseInt(checkbox.dataset.index);
+            const taskText = checkbox.parentElement.querySelector('.checklist-text').textContent;
+            checkedTasks.push({ section, index, text: taskText });
+        });
+
+        // Move to Done.md
+        const today = new Date().toISOString().split('T')[0];
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Get current Done.md content for tasks
+            let doneContent = '';
+            try {
+                doneContent = await api.getFile('md/ToDo/Done.md');
+            } catch (error) {
+                // File might not exist, create it
+                doneContent = '# Tasks - Completed\n\n<!-- Completed tasks moved here with completion dates -->\n\n';
+            }
+
+            // Add completed tasks with date
+            checkedTasks.forEach(task => {
+                doneContent += `- [x] ${task.text} _(${today})_\n`;
+            });
+
+            // Remove from todo lists (in reverse order to maintain indices)
+            checkedTasks.sort((a, b) => b.index - a.index).forEach(task => {
+                AppState.data.todo[task.section].splice(task.index, 1);
+            });
+
+            // Serialize ToDo.md
+            let todoContent = '# To-Do\n\n';
+            todoContent += '## Today\n';
+            AppState.data.todo.today.forEach(task => {
+                todoContent += `- [ ] ${task}\n`;
+            });
+            todoContent += '\n## Soon\n';
+            AppState.data.todo.soon.forEach(task => {
+                todoContent += `- [ ] ${task}\n`;
+            });
+            todoContent += '\n## Long term\n';
+            AppState.data.todo.longTerm.forEach(task => {
+                todoContent += `- [ ] ${task}\n`;
+            });
+
+            if (AppState.isOnline) {
+                // Update both files
+                await api.updateFile('md/ToDo/Done.md', doneContent, `Archive ${checkedTasks.length} completed task(s)`);
+                await api.updateFile('md/ToDo/ToDo.md', todoContent, `Remove ${checkedTasks.length} completed task(s)`);
+                this.showToast(`Archived ${checkedTasks.length} task(s)`, 'success');
+            } else {
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: {
+                        path: 'md/ToDo/Done.md',
+                        content: doneContent,
+                        message: `Archive completed tasks (offline)`
+                    },
+                    description: 'Task archive update'
+                });
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: {
+                        path: 'md/ToDo/ToDo.md',
+                        content: todoContent,
+                        message: `Remove completed tasks (offline)`
+                    },
+                    description: 'ToDo list update'
+                });
+                this.showToast('Queued for sync', 'info');
+            }
+
+            // Re-render tasks
+            this.renderTasks();
+        } catch (error) {
+            this.showToast('Archive failed: ' + error.message, 'error');
+        }
+    }
+
+    static async loadNotes() {
+        await this.loadAccordionView('notesContent', 'md/Notes', 'notes');
+    }
+
+    static async viewFileInline(path, filename) {
+        const content = document.getElementById('notesContent');
+        content.innerHTML = '<div class="loading">Loading file...</div>';
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+            const fileContent = await api.getFile(path);
+
+            // Parse markdown to HTML (simple conversion)
+            const html = this.markdownToHtml(fileContent);
+
+            content.innerHTML = `
+                <div class="file-content">
+                    <div class="file-content-header">
+                        <button class="btn btn-small" onclick="UI.loadNotes()">
+                            <svg class="icon icon-arrow-left" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m12 19-7-7 7-7" />
+                                <path d="M19 12H5" />
+                            </svg>
+                            Back to list
+                        </button>
+                        <h3>${filename}</h3>
+                    </div>
+                    <div class="markdown-content">${html}</div>
+                </div>
+            `;
+        } catch (error) {
+            content.innerHTML = `<div class="error">Error loading file: ${error.message}</div>`;
         }
     }
 
@@ -992,83 +1177,7 @@ class UI {
     }
 
     static async loadProjects() {
-        const projectsList = document.getElementById('projectsList');
-        projectsList.innerHTML = '<div class="loading">Loading projects...</div>';
-
-        try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-
-            // Fetch from md/Projects
-            const contents = await api.request('/contents/md/Projects', 'GET', null, true);
-            if (!contents) {
-                projectsList.innerHTML = '<div class="empty-state">No projects found.</div>';
-                return;
-            }
-
-            const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-
-            if (files.length === 0) {
-                projectsList.innerHTML = '<div class="empty-state">No projects found.</div>';
-                return;
-            }
-
-            let html = '<div class="project-cards">';
-
-            files.forEach(file => {
-                const name = file.name.replace('.md', '').replace(/-/g, ' ');
-                html += `
-                    <div class="project-card" onclick="UI.closeProjects(); UI.viewFileInModal('${file.path}', '${file.name}')">
-                        <div class="project-title">${name}</div>
-                        <div class="project-meta">Click to view details</div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            projectsList.innerHTML = html;
-        } catch (error) {
-            projectsList.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
-        }
-    }
-
-    static async loadProjectsView() {
-        const projectsContent = document.getElementById('projectsContent');
-        projectsContent.innerHTML = '<div class="loading">Loading projects...</div>';
-
-        try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-
-            // Fetch from md/Projects
-            const contents = await api.request('/contents/md/Projects', 'GET', null, true);
-            if (!contents) {
-                projectsContent.innerHTML = '<div class="empty-state">No projects found.</div>';
-                return;
-            }
-
-            const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-
-            if (files.length === 0) {
-                projectsContent.innerHTML = '<div class="empty-state">No projects found.</div>';
-                return;
-            }
-
-            let html = '<div class="project-cards">';
-
-            files.forEach(file => {
-                const name = file.name.replace('.md', '').replace(/-/g, ' ');
-                html += `
-                    <div class="project-card" onclick="UI.viewFileInModal('${file.path}', '${file.name}')">
-                        <div class="project-title">${name}</div>
-                        <div class="project-meta">Click to view details</div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            projectsContent.innerHTML = html;
-        } catch (error) {
-            projectsContent.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
-        }
+        await this.loadAccordionView('projectsContent', 'md/Projects', 'projects');
     }
 
     // People feature removed
@@ -1194,20 +1303,240 @@ class UI {
         }
     }
 
-    static async loadShopping() {
-        const content = document.getElementById('shoppingContent');
-        content.innerHTML = '<div class="loading">Loading shopping list...</div>';
+    // Generic accordion loader for Shopping, Projects, Notes
+    static async loadAccordionView(contentId, directory, viewType) {
+        const content = document.getElementById(contentId);
+        content.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const fileContent = await api.getFile('md/Shopping/Shopping.md');
-            const parsed = DataParser.parseShoppingList(fileContent);
-            AppState.data.shopping = parsed;
+            const contents = await api.request(`/contents/${directory}`, 'GET', null, true);
 
-            this.renderShopping();
+            if (!contents) {
+                content.innerHTML = `<div class="empty-state">No files found</div>`;
+                return;
+            }
+
+            // Filter .md files, exclude Done.md
+            const files = contents.filter(item =>
+                item.type === 'file' &&
+                item.name.endsWith('.md') &&
+                item.name !== 'Done.md' &&
+                item.name !== 'Shopping.md' // Exclude old shopping file
+            );
+
+            if (files.length === 0) {
+                content.innerHTML = `<div class="empty-state">No files found. <button class="btn btn-small" onclick="UI.showCreateFileDialog('${directory}', '${viewType}')">Create New</button></div>`;
+                return;
+            }
+
+            // Load all files and parse checkboxes
+            const filesData = await Promise.all(files.map(async file => {
+                try {
+                    const fileContent = await api.getFile(file.path);
+                    const items = this.parseCheckboxItems(fileContent);
+                    return {
+                        name: file.name.replace('.md', ''),
+                        path: file.path,
+                        items: items,
+                        expanded: false
+                    };
+                } catch (error) {
+                    console.error(`Error loading ${file.name}:`, error);
+                    return null;
+                }
+            }));
+
+            const validFiles = filesData.filter(f => f !== null);
+
+            // Store in AppState
+            if (!AppState.data[viewType]) {
+                AppState.data[viewType] = {};
+            }
+            AppState.data[viewType] = { directory, files: validFiles };
+
+            this.renderAccordion(contentId, viewType);
         } catch (error) {
-            content.innerHTML = `<div class="error">Error loading shopping list: ${error.message}</div>`;
+            content.innerHTML = `<div class="error">Error loading: ${error.message}</div>`;
         }
+    }
+
+    static parseCheckboxItems(markdown) {
+        const lines = markdown.split('\n');
+        const items = [];
+
+        lines.forEach(line => {
+            const uncheckedMatch = line.match(/^- \[ \] (.+)$/);
+            const checkedMatch = line.match(/^- \[x\] (.+)$/);
+
+            if (uncheckedMatch) {
+                items.push({ text: uncheckedMatch[1], checked: false });
+            } else if (checkedMatch) {
+                items.push({ text: checkedMatch[1], checked: true });
+            }
+        });
+
+        return items;
+    }
+
+    static renderAccordion(contentId, viewType) {
+        const content = document.getElementById(contentId);
+        const data = AppState.data[viewType];
+
+        if (!data || !data.files || data.files.length === 0) {
+            content.innerHTML = `<div class="empty-state">No files found</div>`;
+            return;
+        }
+
+        let html = '<div class="accordion">';
+        html += `<button class="btn btn-small" onclick="UI.showCreateFileDialog('${data.directory}', '${viewType}')" style="margin-bottom: 8px;">+ New File</button>`;
+
+        data.files.forEach((file, fileIndex) => {
+            const expandedClass = file.expanded ? 'expanded' : '';
+            const itemCount = file.items.filter(i => !i.checked).length;
+
+            html += `<div class="accordion-item ${expandedClass}" data-file-index="${fileIndex}">`;
+            html += `<div class="accordion-header" onclick="UI.toggleAccordion('${contentId}', '${viewType}', ${fileIndex})">`;
+            html += `<span class="accordion-icon">▶</span>`;
+            html += `<span>${file.name}</span>`;
+            html += `<span style="margin-left: auto; font-size: 0.75rem; color: var(--text-light);">(${itemCount})</span>`;
+            html += `</div>`;
+            html += `<div class="accordion-content">`;
+            html += `<div class="checklist">`;
+
+            file.items.forEach((item, itemIndex) => {
+                if (!item.checked) {  // Only show unchecked items
+                    html += `
+                        <label class="checklist-item">
+                            <input
+                                type="checkbox"
+                                data-view-type="${viewType}"
+                                data-file-index="${fileIndex}"
+                                data-item-index="${itemIndex}"
+                                onchange="UI.toggleAccordionItem(this)"
+                            >
+                            <span class="checklist-text">${item.text}</span>
+                        </label>
+                    `;
+                }
+            });
+
+            html += `</div></div></div>`;
+        });
+
+        html += '</div>';
+        content.innerHTML = html;
+    }
+
+    static toggleAccordion(contentId, viewType, fileIndex) {
+        const data = AppState.data[viewType];
+        data.files[fileIndex].expanded = !data.files[fileIndex].expanded;
+        this.renderAccordion(contentId, viewType);
+    }
+
+    static async toggleAccordionItem(checkbox) {
+        const viewType = checkbox.dataset.viewType;
+        const fileIndex = parseInt(checkbox.dataset.fileIndex);
+        const itemIndex = parseInt(checkbox.dataset.itemIndex);
+
+        const data = AppState.data[viewType];
+        const file = data.files[fileIndex];
+        const item = file.items[itemIndex];
+
+        // Mark as checked
+        item.checked = true;
+
+        // Move to Done.md
+        await this.moveItemToDone(viewType, data.directory, file, item);
+
+        // Re-render
+        const contentId = viewType === 'shopping' ? 'shoppingContent' :
+                         viewType === 'projects' ? 'projectsContent' : 'notesContent';
+        this.renderAccordion(contentId, viewType);
+    }
+
+    static async moveItemToDone(viewType, directory, file, item) {
+        const today = new Date().toISOString().split('T')[0];
+        const api = new GitHubAPI(AppState.token, AppState.repo);
+
+        try {
+            // Get current Done.md
+            let doneContent = '';
+            const donePath = `${directory}/Done.md`;
+            try {
+                doneContent = await api.getFile(donePath);
+            } catch (error) {
+                doneContent = `# ${directory.split('/').pop()} - Completed\n\n<!-- Checked items moved here with completion dates -->\n\n`;
+            }
+
+            // Append with source file prefix and date
+            doneContent += `- [x] [${file.name}] ${item.text} _(${today})_\n`;
+
+            // Update source file (remove the item)
+            const sourceContent = await api.getFile(file.path);
+            const lines = sourceContent.split('\n');
+            const newLines = lines.filter(line => {
+                const match = line.match(/^- \[ \] (.+)$/);
+                return !match || match[1] !== item.text;
+            });
+            const newSourceContent = newLines.join('\n');
+
+            if (AppState.isOnline) {
+                await api.updateFile(donePath, doneContent, `Archive: ${item.text}`);
+                await api.updateFile(file.path, newSourceContent, `Remove completed: ${item.text}`);
+                this.showToast('Moved to Done', 'success');
+            } else {
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: { path: donePath, content: doneContent, message: 'Archive item (offline)' },
+                    description: 'Archive update'
+                });
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: { path: file.path, content: newSourceContent, message: 'Remove item (offline)' },
+                    description: 'File update'
+                });
+                this.showToast('Queued for sync', 'info');
+            }
+
+            // Remove from data
+            file.items = file.items.filter(i => i !== item);
+        } catch (error) {
+            this.showToast('Failed to move item: ' + error.message, 'error');
+            item.checked = false;  // Revert
+        }
+    }
+
+    static showCreateFileDialog(directory, viewType) {
+        const fileName = prompt('Enter file name (without .md):');
+        if (!fileName) return;
+
+        this.createNewFile(directory, fileName, viewType);
+    }
+
+    static async createNewFile(directory, fileName, viewType) {
+        const api = new GitHubAPI(AppState.token, AppState.repo);
+        const filePath = `${directory}/${fileName}.md`;
+        const content = `# ${fileName}\n\n- [ ] First item\n`;
+
+        try {
+            if (AppState.isOnline) {
+                await api.updateFile(filePath, content, `Create new file: ${fileName}`);
+                this.showToast('File created', 'success');
+                // Reload view
+                const contentId = viewType === 'shopping' ? 'shoppingContent' :
+                                 viewType === 'projects' ? 'projectsContent' : 'notesContent';
+                await this.loadAccordionView(contentId, directory, viewType);
+            } else {
+                this.showToast('Cannot create files while offline', 'error');
+            }
+        } catch (error) {
+            this.showToast('Failed to create file: ' + error.message, 'error');
+        }
+    }
+
+    static async loadShopping() {
+        await this.loadAccordionView('shoppingContent', 'md/Shopping', 'shopping');
     }
 
     static renderShopping() {
@@ -1249,7 +1578,87 @@ class UI {
 
         AppState.data.shopping.sections[section][index].checked = checkbox.checked;
 
-        // Serialize without frontmatter
+        // If checked, move to done immediately
+        if (checkbox.checked) {
+            await this.moveShoppingItemToDone(section, index);
+        } else {
+            // If unchecked, just update the file
+            await this.updateShoppingFile();
+        }
+    }
+
+    static async moveShoppingItemToDone(section, index) {
+        const item = AppState.data.shopping.sections[section][index];
+        const today = new Date().toISOString().split('T')[0];
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+
+            // Get current Done.md content
+            let doneContent = '';
+            try {
+                doneContent = await api.getFile('md/Shopping/Done.md');
+            } catch (error) {
+                // File might not exist, create it
+                doneContent = '# Shopping - Completed\n\n<!-- Checked items moved here with completion dates -->\n\n';
+            }
+
+            // Add the completed item with date
+            doneContent += `- [x] ${item.text} _(${today})_\n`;
+
+            // Remove from shopping list
+            AppState.data.shopping.sections[section].splice(index, 1);
+
+            // Serialize shopping list
+            let shoppingContent = '# Shopping List\n';
+            Object.entries(AppState.data.shopping.sections).forEach(([sectionName, items]) => {
+                if (sectionName === 'Shopping List') return;
+                shoppingContent += `\n## ${sectionName}\n`;
+                items.forEach(item => {
+                    const checkbox = item.checked ? '[x]' : '[ ]';
+                    shoppingContent += `- ${checkbox} ${item.text}\n`;
+                });
+            });
+
+            if (AppState.isOnline) {
+                // Update both files
+                await api.updateFile('md/Shopping/Done.md', doneContent, `Add completed item: ${item.text}`);
+                await api.updateFile('md/Shopping/Shopping.md', shoppingContent, `Remove completed item: ${item.text}`);
+                this.showToast('Moved to Done', 'success');
+            } else {
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: {
+                        path: 'md/Shopping/Done.md',
+                        content: doneContent,
+                        message: `Add completed item (offline)`
+                    },
+                    description: 'Shopping done update'
+                });
+                await QueueManager.enqueue({
+                    type: 'update_file',
+                    data: {
+                        path: 'md/Shopping/Shopping.md',
+                        content: shoppingContent,
+                        message: `Remove completed item (offline)`
+                    },
+                    description: 'Shopping list update'
+                });
+                this.showToast('Queued for sync', 'info');
+            }
+
+            // Re-render the shopping list
+            this.renderShopping();
+        } catch (error) {
+            this.showToast('Update failed: ' + error.message, 'error');
+            // Revert the change
+            AppState.data.shopping.sections[section][index].checked = false;
+            this.renderShopping();
+        }
+    }
+
+    static async updateShoppingFile() {
+        // Serialize shopping list
         let newContent = '# Shopping List\n';
         Object.entries(AppState.data.shopping.sections).forEach(([sectionName, items]) => {
             if (sectionName === 'Shopping List') return;
@@ -1263,7 +1672,7 @@ class UI {
         try {
             if (AppState.isOnline) {
                 const api = new GitHubAPI(AppState.token, AppState.repo);
-                await api.updateFile('md/Shopping/Shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
+                await api.updateFile('md/Shopping/Shopping.md', newContent, `Update shopping list`);
                 this.showToast('Updated', 'success');
             } else {
                 await QueueManager.enqueue({
@@ -1279,7 +1688,6 @@ class UI {
             }
         } catch (error) {
             this.showToast('Update failed: ' + error.message, 'error');
-            checkbox.checked = !checkbox.checked; // Revert
         }
     }
 

@@ -378,32 +378,32 @@ body {
 .section {
     background: var(--card-bg);
     border-radius: var(--radius);
-    padding: var(--spacing);
-    margin-bottom: var(--spacing);
+    padding: 8px;
+    margin-bottom: 8px;
     box-shadow: var(--shadow);
 }
 
 .section h3 {
-    font-size: 1.25rem;
-    margin-bottom: 12px;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
     color: var(--text-color);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
 }
 
 /* === Checklist === */
 .checklist {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
 }
 
 .checklist-item {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 12px;
+    gap: 6px;
+    padding: 4px 6px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background 0.2s;
@@ -424,34 +424,35 @@ body {
 }
 
 .checklist-item input[type="checkbox"] {
-    margin-top: 2px;
-    width: 20px;
-    height: 20px;
+    margin-top: 1px;
+    width: 16px;
+    height: 16px;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .checklist-text {
     flex: 1;
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 0.85rem;
+    line-height: 1.2;
 }
 
 .due-date {
     color: var(--danger-color);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
 .task-priority-icon {
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 
 .task-project-link {
     color: var(--primary-color);
     text-decoration: none;
-    font-size: 0.85rem;
-    margin-left: 8px;
+    font-size: 0.75rem;
+    margin-left: 6px;
     white-space: nowrap;
 }
 
@@ -460,26 +461,27 @@ body {
 }
 
 .priority-critical {
-    border-left: 3px solid #E74C3C;
+    border-left: 2px solid #E74C3C;
 }
 
 .priority-high {
-    border-left: 3px solid #F39C12;
+    border-left: 2px solid #F39C12;
 }
 
 .priority-medium {
-    border-left: 3px solid #F1C40F;
+    border-left: 2px solid #F1C40F;
 }
 
 .priority-low {
-    border-left: 3px solid #BDC3C7;
+    border-left: 2px solid #BDC3C7;
 }
 
 .empty-state {
-    padding: 24px;
+    padding: 16px;
     text-align: center;
     color: var(--text-light);
     font-style: italic;
+    font-size: 0.85rem;
 }
 
 .checklist-item-wrapper {
@@ -831,7 +833,7 @@ body {
 }
 
 .modal-body {
-    padding: var(--spacing);
+    padding: 8px;
 }
 
 .setting-group {
@@ -996,34 +998,36 @@ body {
 .file-tree-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
 }
 
 .file-tree-folder {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .file-tree-folder-name {
     font-weight: 600;
     color: var(--text-color);
-    padding: 8px 0;
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+    font-size: 0.9rem;
 }
 
 .file-tree-items {
     list-style: none;
-    padding-left: 16px;
+    padding-left: 12px;
 }
 
 .file-tree-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px;
+    gap: 6px;
+    padding: 4px 6px;
     cursor: pointer;
     border-radius: var(--radius-sm);
     transition: background 0.2s;
+    font-size: 0.85rem;
 }
 
 .file-tree-item:hover {
@@ -1032,6 +1036,7 @@ body {
 
 .file-tree-item .icon {
     color: var(--primary-color);
+    font-size: 0.9rem;
 }
 
 .file-content {
@@ -1042,39 +1047,43 @@ body {
 .file-content-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding-bottom: 12px;
+    gap: 8px;
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--border-color);
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .file-content-header h3 {
     flex: 1;
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 0.95rem;
 }
 
 .markdown-content {
-    line-height: 1.8;
+    line-height: 1.3;
     color: var(--text-color);
+    font-size: 0.85rem;
 }
 
 .markdown-content h1 {
-    font-size: 1.8rem;
-    margin: 24px 0 16px 0;
+    font-size: 1.1rem;
+    margin: 12px 0 6px 0;
     color: var(--text-color);
+    line-height: 1.2;
 }
 
 .markdown-content h2 {
-    font-size: 1.5rem;
-    margin: 20px 0 12px 0;
+    font-size: 1rem;
+    margin: 10px 0 5px 0;
     color: var(--text-color);
+    line-height: 1.2;
 }
 
 .markdown-content h3 {
-    font-size: 1.2rem;
-    margin: 16px 0 8px 0;
+    font-size: 0.9rem;
+    margin: 8px 0 4px 0;
     color: var(--text-color);
+    line-height: 1.2;
 }
 
 .markdown-content a {
@@ -1088,30 +1097,116 @@ body {
 
 .markdown-content pre {
     background: var(--bg-color);
-    padding: 12px;
+    padding: 6px;
     border-radius: var(--radius-sm);
     overflow-x: auto;
-    margin: 12px 0;
+    margin: 6px 0;
 }
 
 .markdown-content code {
     font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
 }
 
 .markdown-content li {
+    margin: 2px 0;
+    line-height: 1.3;
+}
+
+.markdown-content p {
     margin: 4px 0;
+    line-height: 1.3;
+}
+
+.markdown-content ul, .markdown-content ol {
+    margin: 4px 0;
+    padding-left: 20px;
 }
 
 .checkbox-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 4px 0;
+    gap: 4px;
+    margin: 2px 0;
 }
 
 .checkbox-item input[type="checkbox"] {
     margin: 0;
+    width: 14px;
+    height: 14px;
+}
+
+/* === Accordion === */
+.accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.accordion-item {
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.accordion-header:hover {
+    background: var(--bg-color);
+}
+
+.accordion-icon {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+    color: var(--text-light);
+}
+
+.accordion-item.expanded .accordion-icon {
+    transform: rotate(90deg);
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.accordion-item.expanded .accordion-content {
+    max-height: 2000px;
+    transition: max-height 0.5s ease-in;
+}
+
+.accordion-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.accordion-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.accordion-action-btn:hover {
+    background: var(--primary-color);
+    color: white;
 }
 
 /* === Responsive === */

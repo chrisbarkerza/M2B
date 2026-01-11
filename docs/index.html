@@ -71,14 +71,17 @@
                 </span>
                 <span class="nav-label">Shopping</span>
             </button>
-            <button class="nav-btn" data-view="tasks">
+            <button class="nav-btn" data-view="notes">
                 <span class="nav-icon">
-                    <svg class="icon icon-check-square" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344" />
-                        <path d="m9 11 3 3L22 4" />
+                    <svg class="icon icon-file-text" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
                     </svg>
                 </span>
-                <span class="nav-label">Tasks</span>
+                <span class="nav-label">Notes</span>
             </button>
             <button class="nav-btn" data-view="projects">
                 <span class="nav-icon">
@@ -165,7 +168,7 @@
             <div id="shoppingView" class="view">
                 <div class="view-header">
                     <h2>Shopping List</h2>
-                    <button id="clearCompletedBtn" class="btn btn-small">Clear Completed</button>
+                    <p class="view-subtitle">Check items to move to Done.md</p>
                 </div>
 
                 <div id="shoppingContent" class="content-area">
@@ -173,17 +176,24 @@
                 </div>
             </div>
 
+            <!-- Notes View -->
+            <div id="notesView" class="view">
+                <div class="view-header">
+                    <h2>Notes</h2>
+                    <p class="view-subtitle">Browse all markdown files</p>
+                </div>
+
+                <div id="notesContent" class="content-area">
+                    <div class="loading">Loading notes...</div>
+                </div>
+            </div>
+
             <!-- Tasks View -->
             <div id="tasksView" class="view">
                 <div class="view-header">
                     <h2>Tasks</h2>
-                    <div class="view-header-actions">
-                        <div class="tabs">
-                            <button class="tab active" data-context="personal">Personal</button>
-                            <button class="tab" data-context="work">Work</button>
-                        </div>
-                        <button id="archiveCompletedBtn" class="btn btn-small">Archive Completed</button>
-                    </div>
+                    <p class="view-subtitle">Check & click Archive to move to Done.md</p>
+                    <button id="archiveCompletedBtn" class="btn btn-small">Archive Completed</button>
                 </div>
 
                 <div id="tasksContent" class="content-area">
@@ -215,6 +225,19 @@
                 </div>
 
                 <div class="menu-list">
+                    <button class="menu-item" data-action="tasks">
+                        <span class="menu-icon">
+                            <svg class="icon icon-check-square" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344" />
+                                <path d="m9 11 3 3L22 4" />
+                            </svg>
+                        </span>
+                        <div class="menu-content">
+                            <div class="menu-title">Tasks</div>
+                            <div class="menu-subtitle">Manage your to-do list</div>
+                        </div>
+                    </button>
+
                     <button class="menu-item" data-action="files">
                         <span class="menu-icon">
                             <svg class="icon icon-file-text" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
