@@ -1087,3 +1087,76 @@ This will help Claude resume from the right point in the implementation.
 **Status:** Ready to implement
 **Estimated Completion:** 2 hours
 **Risk Level:** Medium (good rollback plan exists)
+
+---
+
+## Quick Reference: GitHub Token Management
+
+### Creating a New Token
+
+1. **Navigate to:** https://github.com/settings/tokens/new
+2. **Fill in:**
+   - Note: "M2B Data Access Token"
+   - Expiration: 1 year (or no expiration)
+   - Scopes: ✅ `repo` (full control of private repositories)
+3. **Generate & Copy:** Token starts with `ghp_`
+
+### Where to Use the Token
+
+| Location | Purpose | How to Add |
+|----------|---------|------------|
+| **GitHub Actions** | Workflow access to M2B-Data | Add as secret `DATA_REPO_TOKEN` in M2B repo settings |
+| **PWA (Desktop)** | Read/write data from browser | Enter in Settings modal, stored in localStorage |
+| **PWA (Mobile)** | Read/write data from phone | Enter in Settings modal, stored in localStorage |
+
+### Token Expired or Lost?
+
+**If token expires or you lose it:**
+
+1. Create new token (see above)
+2. Update in GitHub Actions:
+   - Settings → Secrets and variables → Actions → `DATA_REPO_TOKEN` → Update
+3. Update in PWA:
+   - Open PWA → Settings → Paste new token → Save
+   - Repeat on each device/browser
+
+### Security Best Practices
+
+✅ **DO:**
+- Store token in password manager
+- Use `repo` scope only (minimum required)
+- Set expiration date (1 year recommended)
+- Regenerate token if you suspect it's compromised
+
+❌ **DON'T:**
+- Share token with anyone
+- Commit token to code
+- Use token with broader scopes than needed
+- Store token in plain text files
+
+### Troubleshooting Token Issues
+
+| Error | Likely Cause | Solution |
+|-------|--------------|----------|
+| "404 Not Found" | Token doesn't have access to M2B-Data | Ensure token has `repo` scope |
+| "401 Unauthorized" | Token expired or invalid | Generate new token |
+| "403 Forbidden" | Token has wrong permissions | Check `repo` scope is enabled |
+| Data loads but can't save | Token is read-only | Regenerate with `repo` scope (not `public_repo`) |
+
+### Checking Your Current Token
+
+**On GitHub:**
+- Go to https://github.com/settings/tokens
+- Find "M2B Data Access Token"
+- Check expiration date and scopes
+- Can't see the token value (security feature)
+
+**In PWA:**
+- Token stored in browser localStorage
+- Open DevTools → Application → Local Storage → `github_token`
+- Can view but keep it private
+
+**In GitHub Actions:**
+- Go to repo Settings → Secrets and variables → Actions
+- See secret name but not value (security feature)
+- Can update/delete but can't view
