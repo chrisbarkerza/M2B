@@ -6,6 +6,7 @@
 const AppState = {
     token: localStorage.getItem('github_token') || '',
     repo: localStorage.getItem('github_repo') || 'chrisbarkerza/M2B-Data',
+    issuesRepo: 'chrisbarkerza/M2B', // Issues go to public M2B repo, data comes from M2B-Data
     isOnline: navigator.onLine,
     currentView: 'capture',
     data: {
@@ -179,16 +180,19 @@ class QueueManager {
     static async processQueue() {
         if (!AppState.isOnline || AppState.queue.length === 0) return;
 
-        const api = new GitHubAPI(AppState.token, AppState.repo);
         const queue = [...AppState.queue];
         AppState.queue = [];
 
         for (const action of queue) {
             try {
                 if (action.type === 'capture') {
-                    await api.createIssue(action.data.title, action.data.body);
+                    // Use issuesRepo for captures
+                    const issuesApi = new GitHubAPI(AppState.token, AppState.issuesRepo);
+                    await issuesApi.createIssue(action.data.title, action.data.body);
                 } else if (action.type === 'update_file') {
-                    await api.updateFile(action.data.path, action.data.content, action.data.message);
+                    // Use data repo for file updates
+                    const dataApi = new GitHubAPI(AppState.token, AppState.repo);
+                    await dataApi.updateFile(action.data.path, action.data.content, action.data.message);
                 }
                 UI.showToast(`Synced: ${action.description}`, 'success');
             } catch (error) {
@@ -482,15 +486,16 @@ class UI {
                 const body = lines.slice(1).join('\n').trim() || text;
 
                 if (AppState.isOnline && AppState.token) {
-                    const api = new GitHubAPI(AppState.token, AppState.repo);
-                    const issue = await api.createIssue(title, body);
+                    // Use issuesRepo for creating issues (M2B), not the data repo (M2B-Data)
+                    const issuesApi = new GitHubAPI(AppState.token, AppState.issuesRepo);
+                    const issue = await issuesApi.createIssue(title, body);
                     this.showToast('Captured! Processing...', 'success');
 
                     // Clear input immediately
                     captureInput.value = '';
 
                     // Poll for result
-                    this.pollForCaptureResult(api, issue.number, resultDiv);
+                    this.pollForCaptureResult(issuesApi, issue.number, resultDiv);
                 } else {
                     await QueueManager.enqueue({
                         type: 'capture',
