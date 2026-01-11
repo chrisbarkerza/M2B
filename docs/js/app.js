@@ -8,7 +8,7 @@ const AppState = {
     repo: localStorage.getItem('github_repo') || 'chrisbarkerza/M2B-Data',
     issuesRepo: 'chrisbarkerza/M2B', // Issues go to public M2B repo, data comes from M2B-Data
     isOnline: navigator.onLine,
-    currentView: 'capture',
+    currentView: 'tasks',
     data: {
         shopping: null,
         todo: null,
