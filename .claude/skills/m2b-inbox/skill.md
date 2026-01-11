@@ -86,9 +86,9 @@ You are the Second Brain Classifier for Chris Barker's personal knowledge manage
 | Category | When to Use | File Location |
 |----------|-------------|---------------|
 | **shopping** | Items to purchase | md/Shopping/Shopping.md (under ## section) |
-| **todo_today** | Tasks due today or very urgent | md/ToDo.md (under ## Today) |
-| **todo_soon** | Tasks coming up soon (within ~week) | md/ToDo.md (under ## Soon) |
-| **todo_long_term** | Future tasks or no deadline | md/ToDo.md (under ## Long term) |
+| **todo_today** | Tasks due today or very urgent | md/ToDo/ToDo.md (under ## Today) |
+| **todo_soon** | Tasks coming up soon (within ~week) | md/ToDo/ToDo.md (under ## Soon) |
+| **todo_long_term** | Future tasks or no deadline | md/ToDo/ToDo.md (under ## Long term) |
 | **project** | Multi-step endeavors with goals | md/Projects/{name}.md (new file) |
 | **note** | General information, meeting notes | md/Notes/{name}.md (new file) |
 
@@ -198,7 +198,7 @@ After user responds, re-run classification with the additional context.
 - Format: `- [ ] Item name`
 - Add under appropriate ## section
 
-**ToDo**: Append to `md/ToDo.md`
+**ToDo**: Append to `md/ToDo/ToDo.md`
 - Determine urgency: Today, Soon, or Long term
 - Format: `- [ ] Task description`
 - Add under appropriate ## section
@@ -244,7 +244,7 @@ Convert titles to filesystem-safe slugs:
 Before filing, check for duplicates:
 
 **Shopping items**: Read `md/Shopping/Shopping.md`, check if item already exists
-**ToDos**: Read `md/ToDo.md`, check if similar task exists
+**ToDos**: Read `md/ToDo/ToDo.md`, check if similar task exists
 **Projects/Notes**: Check if file with same slug exists
 
 If duplicate found:
@@ -264,12 +264,12 @@ Example: "Project: Build recipe app. Need to research competitors this week."
 
 Process:
 1. Primary: Create project file in `md/Projects/recipe-app.md`
-2. Secondary: Add task to `md/ToDo.md` under ## Soon
+2. Secondary: Add task to `md/ToDo/ToDo.md` under ## Soon
 3. Response:
 ```
 ✓ Saved in 2 places (confidence: 87%):
 - Project: "Build recipe app" in md/Projects/recipe-app.md
-- Task: "Research competitors" in md/ToDo.md (## Soon)
+- Task: "Research competitors" in md/ToDo/ToDo.md (## Soon)
   → Linked to project
 ```
 
@@ -287,7 +287,7 @@ Process:
 ```
 ✓ Filed 3 items:
 - Shopping: milk, eggs (md/Shopping/Shopping.md ## Food)
-- Task: Call dentist (md/ToDo.md ## Soon) [confidence: 95%]
+- Task: Call dentist (md/ToDo/ToDo.md ## Soon) [confidence: 95%]
 - Project: Website redesign (md/Projects/website-redesign.md) [confidence: 88%]
 ```
 
@@ -384,7 +384,7 @@ Use this for:
 - [ ] Multivitamins
 ```
 
-2. `md/ToDo.md` (appended under ## Soon):
+2. `md/ToDo/ToDo.md` (appended under ## Soon):
 ```markdown
 - [ ] Call dentist to schedule cleaning
 ```
@@ -393,7 +393,7 @@ Use this for:
 ```
 ✓ Filed 2 items (confidence: 95%):
 - Shopping: protein powder, multivitamins (md/Shopping/Shopping.md ## Supplements)
-- Task: Call dentist to schedule cleaning (md/ToDo.md ## Soon)
+- Task: Call dentist to schedule cleaning (md/ToDo/ToDo.md ## Soon)
 ```
 
 ## Implementation Notes

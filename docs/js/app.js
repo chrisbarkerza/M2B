@@ -165,24 +165,7 @@ class DataParser {
         return { frontmatter, tasks };
     }
 
-    static serializeShoppingList(frontmatter, sections) {
-        let content = '---\n';
-        Object.entries(frontmatter).forEach(([key, value]) => {
-            content += `${key}: ${value}\n`;
-        });
-        content += '---\n\n# Shopping List\n';
-
-        Object.entries(sections).forEach(([section, items]) => {
-            if (section === 'Shopping List') return; // Skip the main heading
-            content += `\n## ${section}\n`;
-            items.forEach(item => {
-                const checkbox = item.checked ? '[x]' : '[ ]';
-                content += `- ${checkbox} ${item.text}\n`;
-            });
-        });
-
-        return content;
-    }
+    // serializeShoppingList removed - no frontmatter needed
 }
 
 // Offline Queue Manager
@@ -275,10 +258,10 @@ class UI {
         // Load data for view
         if (viewName === 'shopping' && !AppState.data.shopping) {
             this.loadShopping();
-        } else if (viewName === 'tasks' && !AppState.data.tasks[AppState.currentContext].urgent) {
-            this.loadTasks(AppState.currentContext);
+        } else if (viewName === 'tasks' && !AppState.data.todo) {
+            this.loadTasks();
         } else if (viewName === 'projects') {
-            this.loadProjectsView('active');
+            this.loadProjectsView();
         }
     }
 
@@ -604,10 +587,9 @@ class UI {
             if (confirm('Clear all cached data?')) {
                 AppState.data = {
                     shopping: null,
-                    tasks: { personal: { urgent: null, longerTerm: null }, work: { urgent: null, longerTerm: null } },
-                    ideas: [],
+                    todo: null,
                     projects: [],
-                    people: []
+                    notes: []
                 };
                 this.showToast('Cache cleared', 'success');
             }
@@ -662,26 +644,11 @@ class UI {
     }
 
     static setupTaskTabs() {
-        document.querySelectorAll('#tasksView .tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const context = tab.dataset.context;
-                document.querySelectorAll('#tasksView .tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                AppState.currentContext = context;
-                this.loadTasks(context);
-            });
-        });
+        // No longer needed - removed personal/work context tabs
     }
 
     static setupProjectTabs() {
-        document.querySelectorAll('#projectsView .tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const status = tab.dataset.status;
-                document.querySelectorAll('#projectsView .tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                this.loadProjectsView(status);
-            });
-        });
+        // Tabs removed - projects view simplified
     }
 
     static setupMoreMenu() {
@@ -700,12 +667,6 @@ class UI {
                 break;
             case 'digest':
                 this.showDigest();
-                break;
-            case 'ideas':
-                this.showIdeasModal();
-                break;
-            case 'people':
-                this.showPeople();
                 break;
             case 'search':
                 this.showSearch();
@@ -750,31 +711,41 @@ class UI {
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Read urgent tasks
-            const [urgentPersonal, urgentWork] = await Promise.all([
-                api.getFile('md/admin/personal/urgent.md').catch(() => ''),
-                api.getFile('md/admin/work/urgent.md').catch(() => '')
-            ]);
+            // Read tasks from ToDo.md
+            const todoContent = await api.getFile('md/ToDo/ToDo.md').catch(() => '');
 
-            // Parse urgent tasks
-            const urgentTasks = [];
-            [urgentPersonal, urgentWork].forEach(content => {
-                const lines = content.split('\n');
-                lines.forEach(line => {
-                    if (line.match(/^- \[ \] \*\*(.*?)\*\*/)) {
-                        const task = line.match(/\*\*(.*?)\*\*/)[1];
-                        urgentTasks.push(task);
+            // Parse Today and Soon tasks
+            const todayTasks = [];
+            const soonTasks = [];
+            let currentSection = null;
+
+            todoContent.split('\n').forEach(line => {
+                if (line.includes('## Today')) {
+                    currentSection = 'today';
+                    return;
+                }
+                if (line.includes('## Soon')) {
+                    currentSection = 'soon';
+                    return;
+                }
+                if (line.includes('## Long term')) {
+                    currentSection = null;
+                    return;
+                }
+
+                const taskMatch = line.match(/^- \[ \] (.+)$/);
+                if (taskMatch) {
+                    if (currentSection === 'today') {
+                        todayTasks.push(taskMatch[1]);
+                    } else if (currentSection === 'soon') {
+                        soonTasks.push(taskMatch[1]);
                     }
-                });
+                }
             });
 
             // Get active projects
-            const [personalProjects, workProjects] = await Promise.all([
-                api.request('/contents/md/projects/personal/active', 'GET', null, true),
-                api.request('/contents/md/projects/work/active', 'GET', null, true)
-            ]);
-
-            const activeProjects = [...(personalProjects || []), ...(workProjects || [])]
+            const projectsDir = await api.request('/contents/md/Projects', 'GET', null, true);
+            const activeProjects = (projectsDir || [])
                 .filter(item => item.type === 'file' && item.name.endsWith('.md'))
                 .map(item => item.name.replace('.md', '').replace(/-/g, ' '));
 
@@ -782,11 +753,21 @@ class UI {
             let html = `<div class="digest-content">`;
             html += `<h3>Daily Digest - ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>`;
 
-            if (urgentTasks.length > 0) {
+            if (todayTasks.length > 0) {
                 html += `<div class="digest-section">`;
-                html += `<h4>Urgent (${urgentTasks.length} ${urgentTasks.length === 1 ? 'task' : 'tasks'})</h4>`;
+                html += `<h4>Today (${todayTasks.length} ${todayTasks.length === 1 ? 'task' : 'tasks'})</h4>`;
                 html += `<ul>`;
-                urgentTasks.forEach(task => {
+                todayTasks.forEach(task => {
+                    html += `<li>${task}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            if (soonTasks.length > 0) {
+                html += `<div class="digest-section">`;
+                html += `<h4>Soon (${soonTasks.length} ${soonTasks.length === 1 ? 'task' : 'tasks'})</h4>`;
+                html += `<ul>`;
+                soonTasks.slice(0, 5).forEach(task => {
                     html += `<li>${task}</li>`;
                 });
                 html += `</ul></div>`;
@@ -802,7 +783,7 @@ class UI {
                 html += `</ul></div>`;
             }
 
-            if (urgentTasks.length === 0 && activeProjects.length === 0) {
+            if (todayTasks.length === 0 && soonTasks.length === 0 && activeProjects.length === 0) {
                 html += `<div class="empty-state">All clear! No urgent tasks or active projects.</div>`;
             }
 
@@ -970,7 +951,7 @@ class UI {
         this.showToast('Loading inbox log...', 'info');
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const content = await api.getFile('md/inbox/inbox-log.md');
+            const content = await api.getFile('md/inbox-log.md');
 
             // Show in file viewer
             this.showFileViewer();
@@ -1005,200 +986,87 @@ class UI {
         document.getElementById('projectsModal').classList.add('hidden');
     }
 
-    static async loadProjects(status) {
+    static async loadProjects() {
         const projectsList = document.getElementById('projectsList');
         projectsList.innerHTML = '<div class="loading">Loading projects...</div>';
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Fetch from both personal and work
-            const paths = [
-                { path: `md/projects/personal/${status}`, context: 'Personal' },
-                { path: `md/projects/work/${status}`, context: 'Work' }
-            ];
-
-            const fetchPromises = paths.map(async ({ path, context }) => {
-                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
-                if (!contents) return { context, files: [] };
-                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                return { context, files };
-            });
-
-            const results = await Promise.all(fetchPromises);
-
-            let html = '';
-
-            results.forEach(({ context, files }) => {
-                if (files.length > 0) {
-                    html += `<div class="project-section">
-                        <h3>${context}</h3>
-                        <div class="project-cards">`;
-
-                    files.forEach(file => {
-                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
-                        html += `
-                            <div class="project-card" onclick="UI.closeProjects(); UI.viewFileInModal('${file.path}', '${file.name}')">
-                                <div class="project-title">${name}</div>
-                                <div class="project-meta">Click to view details</div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div></div>`;
-                }
-            });
-
-            if (html === '') {
-                html = `<div class="empty-state">No ${status} projects found.</div>`;
+            // Fetch from md/Projects
+            const contents = await api.request('/contents/md/Projects', 'GET', null, true);
+            if (!contents) {
+                projectsList.innerHTML = '<div class="empty-state">No projects found.</div>';
+                return;
             }
 
+            const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+
+            if (files.length === 0) {
+                projectsList.innerHTML = '<div class="empty-state">No projects found.</div>';
+                return;
+            }
+
+            let html = '<div class="project-cards">';
+
+            files.forEach(file => {
+                const name = file.name.replace('.md', '').replace(/-/g, ' ');
+                html += `
+                    <div class="project-card" onclick="UI.closeProjects(); UI.viewFileInModal('${file.path}', '${file.name}')">
+                        <div class="project-title">${name}</div>
+                        <div class="project-meta">Click to view details</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
             projectsList.innerHTML = html;
         } catch (error) {
             projectsList.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
         }
     }
 
-    static async loadProjectsView(status) {
+    static async loadProjectsView() {
         const projectsContent = document.getElementById('projectsContent');
         projectsContent.innerHTML = '<div class="loading">Loading projects...</div>';
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Fetch from both personal and work
-            const paths = [
-                { path: `md/projects/personal/${status}`, context: 'Personal' },
-                { path: `md/projects/work/${status}`, context: 'Work' }
-            ];
-
-            const fetchPromises = paths.map(async ({ path, context }) => {
-                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
-                if (!contents) return { context, files: [] };
-                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                return { context, files };
-            });
-
-            const results = await Promise.all(fetchPromises);
-
-            let html = '';
-
-            results.forEach(({ context, files }) => {
-                if (files.length > 0) {
-                    html += `<div class="project-section">
-                        <h3>${context}</h3>
-                        <div class="project-cards">`;
-
-                    files.forEach(file => {
-                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
-                        html += `
-                            <div class="project-card" onclick="UI.viewFileInModal('${file.path}', '${file.name}')">
-                                <div class="project-title">${name}</div>
-                                <div class="project-meta">Click to view details</div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div></div>`;
-                }
-            });
-
-            if (html === '') {
-                html = `<div class="empty-state">No ${status} projects found.</div>`;
+            // Fetch from md/Projects
+            const contents = await api.request('/contents/md/Projects', 'GET', null, true);
+            if (!contents) {
+                projectsContent.innerHTML = '<div class="empty-state">No projects found.</div>';
+                return;
             }
 
+            const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+
+            if (files.length === 0) {
+                projectsContent.innerHTML = '<div class="empty-state">No projects found.</div>';
+                return;
+            }
+
+            let html = '<div class="project-cards">';
+
+            files.forEach(file => {
+                const name = file.name.replace('.md', '').replace(/-/g, ' ');
+                html += `
+                    <div class="project-card" onclick="UI.viewFileInModal('${file.path}', '${file.name}')">
+                        <div class="project-title">${name}</div>
+                        <div class="project-meta">Click to view details</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
             projectsContent.innerHTML = html;
         } catch (error) {
             projectsContent.innerHTML = `<div class="error">Error loading projects: ${error.message}</div>`;
         }
     }
 
-    static async showPeople() {
-        const modal = document.getElementById('peopleModal');
-        modal.classList.remove('hidden');
-
-        // Set up tab switching
-        const tabs = modal.querySelectorAll('.tab');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const category = tab.dataset.category;
-                this.loadPeople(category);
-            });
-        });
-
-        await this.loadPeople('all');
-    }
-
-    static closePeople() {
-        document.getElementById('peopleModal').classList.add('hidden');
-    }
-
-    static async loadPeople(category) {
-        const peopleList = document.getElementById('peopleList');
-        peopleList.innerHTML = '<div class="loading">Loading people...</div>';
-
-        try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-
-            let paths = [];
-            if (category === 'all') {
-                paths = [
-                    { path: 'md/people/business', label: 'Business' },
-                    { path: 'md/people/professional', label: 'Professional' },
-                    { path: 'md/people/family', label: 'Family' },
-                    { path: 'md/people/friends', label: 'Friends' }
-                ];
-            } else {
-                paths = [{ path: `md/people/${category}`, label: category.charAt(0).toUpperCase() + category.slice(1) }];
-            }
-
-            const fetchPromises = paths.map(async ({ path, label }) => {
-                const contents = await api.request(`/contents/${path}`, 'GET', null, true);
-                if (!contents) return { label, files: [] };
-                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
-                return { label, files };
-            });
-
-            const results = await Promise.all(fetchPromises);
-
-            let html = '';
-
-            results.forEach(({ label, files }) => {
-                if (files.length > 0) {
-                    html += `<div class="people-section">
-                        <h3>${label}</h3>
-                        <div class="people-cards">`;
-
-                    files.forEach(file => {
-                        const name = file.name.replace('.md', '').replace(/-/g, ' ');
-                        html += `
-                            <div class="people-card" onclick="UI.closePeople(); UI.viewFileInModal('${file.path}', '${file.name}')">
-                                <div class="people-icon">
-                                    <svg class="icon icon-user" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                                        <circle cx="12" cy="7" r="4" />
-                                    </svg>
-                                </div>
-                                <div class="people-name">${name}</div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div></div>`;
-                }
-            });
-
-            if (html === '') {
-                html = `<div class="empty-state">No people found in this category.</div>`;
-            }
-
-            peopleList.innerHTML = html;
-        } catch (error) {
-            peopleList.innerHTML = `<div class="error">Error loading people: ${error.message}</div>`;
-        }
-    }
+    // People feature removed
 
     static async showSearch() {
         const modal = document.getElementById('searchModal');
@@ -1232,24 +1100,12 @@ class UI {
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Search in all directories
+            // Search in simplified directories
             const searchPaths = [
-                'md/admin/personal',
-                'md/admin/work',
-                'md/projects/personal/active',
-                'md/projects/personal/waiting',
-                'md/projects/personal/blocked',
-                'md/projects/personal/done',
-                'md/projects/work/active',
-                'md/projects/work/waiting',
-                'md/projects/work/blocked',
-                'md/projects/work/done',
-                'md/ideas',
-                'md/people/business',
-                'md/people/professional',
-                'md/people/family',
-                'md/people/friends',
-                'md/inbox'
+                'md/ToDo',
+                'md/Shopping',
+                'md/Projects',
+                'md/Notes'
             ];
 
             const fetchPromises = searchPaths.map(async path => {
@@ -1314,13 +1170,13 @@ class UI {
             await QueueManager.processQueue();
             // Clear cached data to force reload
             AppState.data.shopping = null;
-            AppState.data.tasks = { personal: { urgent: null, longerTerm: null }, work: { urgent: null, longerTerm: null } };
+            AppState.data.todo = null;
 
             // Reload current view
             if (AppState.currentView === 'shopping') {
                 await this.loadShopping();
             } else if (AppState.currentView === 'tasks') {
-                await this.loadTasks(AppState.currentContext);
+                await this.loadTasks();
             }
 
             localStorage.setItem('last_sync', new Date().toISOString());
@@ -1339,7 +1195,7 @@ class UI {
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const fileContent = await api.getFile('md/shopping.md');
+            const fileContent = await api.getFile('md/Shopping/Shopping.md');
             const parsed = DataParser.parseShoppingList(fileContent);
             AppState.data.shopping = parsed;
 
@@ -1388,24 +1244,27 @@ class UI {
 
         AppState.data.shopping.sections[section][index].checked = checkbox.checked;
 
-        // Update frontmatter date
-        AppState.data.shopping.frontmatter.updated = new Date().toISOString().split('T')[0];
-
-        const newContent = DataParser.serializeShoppingList(
-            AppState.data.shopping.frontmatter,
-            AppState.data.shopping.sections
-        );
+        // Serialize without frontmatter
+        let newContent = '# Shopping List\n';
+        Object.entries(AppState.data.shopping.sections).forEach(([sectionName, items]) => {
+            if (sectionName === 'Shopping List') return;
+            newContent += `\n## ${sectionName}\n`;
+            items.forEach(item => {
+                const checkbox = item.checked ? '[x]' : '[ ]';
+                newContent += `- ${checkbox} ${item.text}\n`;
+            });
+        });
 
         try {
             if (AppState.isOnline) {
                 const api = new GitHubAPI(AppState.token, AppState.repo);
-                await api.updateFile('md/shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
+                await api.updateFile('md/Shopping/Shopping.md', newContent, `Update shopping list: ${checkbox.checked ? 'check' : 'uncheck'} ${AppState.data.shopping.sections[section][index].text}`);
                 this.showToast('Updated', 'success');
             } else {
                 await QueueManager.enqueue({
                     type: 'update_file',
                     data: {
-                        path: 'md/shopping.md',
+                        path: 'md/Shopping/Shopping.md',
                         content: newContent,
                         message: `Update shopping list (offline)`
                     },
@@ -1419,38 +1278,48 @@ class UI {
         }
     }
 
-    static async loadTasks(context) {
+    static async loadTasks() {
         const content = document.getElementById('tasksContent');
         content.innerHTML = '<div class="loading">Loading tasks...</div>';
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
-            const urgentContent = await api.getFile(`md/admin/${context}/urgent.md`);
-            const longerTermContent = await api.getFile(`md/admin/${context}/longer-term.md`);
+            const todoContent = await api.getFile('md/ToDo/ToDo.md');
 
-            AppState.data.tasks[context].urgent = DataParser.parseTaskList(urgentContent);
-            AppState.data.tasks[context].longerTerm = DataParser.parseTaskList(longerTermContent);
+            // Parse the ToDo.md file
+            const tasks = { today: [], soon: [], longTerm: [] };
+            let currentSection = null;
 
-            this.renderTasks(context);
+            todoContent.split('\n').forEach(line => {
+                if (line.includes('## Today')) {
+                    currentSection = 'today';
+                    return;
+                }
+                if (line.includes('## Soon')) {
+                    currentSection = 'soon';
+                    return;
+                }
+                if (line.includes('## Long term')) {
+                    currentSection = 'longTerm';
+                    return;
+                }
+
+                const taskMatch = line.match(/^- \[ \] (.+)$/);
+                if (taskMatch && currentSection) {
+                    tasks[currentSection].push(taskMatch[1]);
+                }
+            });
+
+            AppState.data.todo = tasks;
+            this.renderTasks();
         } catch (error) {
             content.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
         }
     }
 
-    static renderTasks(context) {
+    static renderTasks() {
         const content = document.getElementById('tasksContent');
-        const { urgent, longerTerm } = AppState.data.tasks[context];
-
-        const priorityIcons = {
-            critical: '🔴',
-            high: '🟠',
-            medium: '🟡',
-            low: '⚪'
-        };
-
-        // Sort tasks by order field (manual ordering)
-        const sortedUrgent = [...urgent.tasks.active].sort((a, b) => a.order - b.order);
-        const sortedLongerTerm = [...longerTerm.tasks.active].sort((a, b) => a.order - b.order);
+        const { today, soon, longTerm } = AppState.data.todo;
 
         let html = `
             <div class="section">
@@ -1458,33 +1327,22 @@ class UI {
                     <svg class="icon icon-flame" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
                     </svg>
-                    Urgent (Due within 7 days)
+                    Today
                 </h3>
                 <div class="checklist">
         `;
 
-        sortedUrgent.forEach((task, index) => {
-            const dueText = task.due ? ` <span class="due-date">(due: ${task.due})</span>` : '';
-            const priorityIcon = priorityIcons[task.priority] || priorityIcons.medium;
-            const projectLink = task.project ? ` <a href="#" class="task-project-link" data-project="${task.project}">→ ${task.project}</a>` : '';
-
+        today.forEach((task, index) => {
             html += `
-                <div class="checklist-item-wrapper">
-                    <label class="checklist-item priority-${task.priority}">
-                        <input type="checkbox" data-context="${context}" data-urgency="urgent" data-task-text="${task.text}">
-                        <span class="task-priority-icon">${priorityIcon}</span>
-                        <span class="checklist-text"><strong>${task.text}</strong>${dueText}${projectLink}</span>
-                    </label>
-                    <div class="task-reorder-btns">
-                        <button class="icon-btn-small task-reorder-up" data-index="${index}" data-urgency="urgent" ${index === 0 ? 'disabled' : ''} title="Move up">▲</button>
-                        <button class="icon-btn-small task-reorder-down" data-index="${index}" data-urgency="urgent" ${index === sortedUrgent.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
-                    </div>
-                </div>
+                <label class="checklist-item">
+                    <input type="checkbox" data-section="today" data-index="${index}">
+                    <span class="checklist-text">${task}</span>
+                </label>
             `;
         });
 
-        if (sortedUrgent.length === 0) {
-            html += '<div class="empty-state">No urgent tasks! 🎉</div>';
+        if (today.length === 0) {
+            html += '<div class="empty-state">No tasks for today! 🎉</div>';
         }
 
         html += '</div></div>';
@@ -1498,113 +1356,51 @@ class UI {
                         <rect width="18" height="18" x="3" y="4" rx="2" />
                         <path d="M3 10h18" />
                     </svg>
-                    Longer Term
+                    Soon
                 </h3>
                 <div class="checklist">
         `;
 
-        sortedLongerTerm.forEach((task, index) => {
-            const dueText = task.due ? ` <span class="due-date">(due: ${task.due})</span>` : '';
-            const priorityIcon = priorityIcons[task.priority] || priorityIcons.medium;
-            const projectLink = task.project ? ` <a href="#" class="task-project-link" data-project="${task.project}">→ ${task.project}</a>` : '';
-
+        soon.forEach((task, index) => {
             html += `
-                <div class="checklist-item-wrapper">
-                    <label class="checklist-item priority-${task.priority}">
-                        <input type="checkbox" data-context="${context}" data-urgency="longer-term" data-task-text="${task.text}">
-                        <span class="task-priority-icon">${priorityIcon}</span>
-                        <span class="checklist-text"><strong>${task.text}</strong>${dueText}${projectLink}</span>
-                    </label>
-                    <div class="task-reorder-btns">
-                        <button class="icon-btn-small task-reorder-up" data-index="${index}" data-urgency="longer-term" ${index === 0 ? 'disabled' : ''} title="Move up">▲</button>
-                        <button class="icon-btn-small task-reorder-down" data-index="${index}" data-urgency="longer-term" ${index === sortedLongerTerm.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
-                    </div>
-                </div>
+                <label class="checklist-item">
+                    <input type="checkbox" data-section="soon" data-index="${index}">
+                    <span class="checklist-text">${task}</span>
+                </label>
             `;
         });
 
-        if (sortedLongerTerm.length === 0) {
-            html += '<div class="empty-state">No longer-term tasks</div>';
+        if (soon.length === 0) {
+            html += '<div class="empty-state">No tasks coming up soon</div>';
+        }
+
+        html += '</div></div>';
+
+        html += `
+            <div class="section">
+                <h3>Long Term</h3>
+                <div class="checklist">
+        `;
+
+        longTerm.forEach((task, index) => {
+            html += `
+                <label class="checklist-item">
+                    <input type="checkbox" data-section="longTerm" data-index="${index}">
+                    <span class="checklist-text">${task}</span>
+                </label>
+            `;
+        });
+
+        if (longTerm.length === 0) {
+            html += '<div class="empty-state">No long-term tasks</div>';
         }
 
         html += '</div></div>';
 
         content.innerHTML = html;
-
-        // Add event listeners for project links
-        document.querySelectorAll('.task-project-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const projectSlug = link.dataset.project;
-                UI.showToast(`Opening project: ${projectSlug}`, 'info');
-                // TODO: Navigate to project view
-            });
-        });
     }
 
-    static async showIdeasModal() {
-        // Create a modal for Ideas
-        const modal = document.createElement('div');
-        modal.id = 'ideasModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Ideas</h3>
-                    <button class="close-btn" onclick="UI.closeIdeasModal()">
-                        <svg class="icon icon-x" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M18 6 6 18" />
-                            <path d="m6 6 12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="domain-filters">
-                    <button class="filter-btn active" data-domain="all">All</button>
-                    <button class="filter-btn" data-domain="tech">Tech</button>
-                    <button class="filter-btn" data-domain="business">Business</button>
-                    <button class="filter-btn" data-domain="personal">Personal</button>
-                    <button class="filter-btn" data-domain="creative">Creative</button>
-                </div>
-                <div id="ideasModalContent" class="modal-body">
-                    <div class="placeholder">Ideas coming soon...</div>
-                </div>
-            </div>
-        `;
-
-        // Remove existing modal if any
-        const existingModal = document.getElementById('ideasModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
-        document.body.appendChild(modal);
-        modal.classList.remove('hidden');
-
-        // Setup filter buttons
-        modal.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                modal.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                // TODO: Filter ideas by domain
-            });
-        });
-    }
-
-    static closeIdeasModal() {
-        const modal = document.getElementById('ideasModal');
-        if (modal) {
-            modal.remove();
-        }
-    }
-
-    static async loadIdeas() {
-        // TODO: Implement ideas loading from ideas/ directory
-        document.getElementById('ideasContent').innerHTML = '<div class="placeholder">Ideas coming soon...</div>';
-    }
-
-    static renderIdeas() {
-        // TODO: Implement ideas rendering with domain filtering
-    }
+    // Ideas feature removed
 
     static updateQueueDisplay() {
         const queueSection = document.getElementById('captureQueue');
@@ -1694,11 +1490,10 @@ class UI {
         const confidenceColor = result.confidence >= 75 ? 'success' : 'warning';
         const categoryIcons = {
             shopping: '🛒',
-            admin_urgent: '🔥',
-            admin_longer_term: '📅',
+            todo_today: '🔥',
+            todo_soon: '📅',
+            todo_long_term: '📆',
             project: '📁',
-            person: '👤',
-            idea: '💡',
             note: '📝'
         };
 

@@ -70,8 +70,9 @@ md/
 ├── Shopping/
 │   ├── Shopping.md              # Main shopping list
 │   └── Done.md                  # Completed items with dates
-├── ToDo.md                      # All tasks organized by urgency
-├── Done.md                      # Completed tasks with dates
+├── ToDo/
+│   ├── ToDo.md                  # All tasks organized by urgency
+│   └── Done.md                  # Completed tasks with dates
 ├── Projects/
 │   ├── {project-name}.md        # One file per project
 │   └── Done/                    # Manually moved completed projects
@@ -108,7 +109,7 @@ md/
 - [x] Milk (completed: 2026-01-10)
 ```
 
-**ToDo** (`md/ToDo.md`):
+**ToDo** (`md/ToDo/ToDo.md`):
 ```markdown
 # To Do
 
@@ -125,7 +126,7 @@ md/
 - [ ] Plan summer vacation
 ```
 
-**ToDo Done** (`md/Done.md`):
+**ToDo Done** (`md/ToDo/Done.md`):
 ```markdown
 # To Do - Completed
 
@@ -311,7 +312,7 @@ When user checks an item in Shopping.md:
 ### ToDo Items
 
 When user checks a task in ToDo.md:
-1. Move item from ToDo.md to Done.md
+1. Move item from ToDo/ToDo.md to ToDo/Done.md
 2. Add completion date: `- [x] Task (completed: YYYY-MM-DD)`
 
 ### Project Actions
