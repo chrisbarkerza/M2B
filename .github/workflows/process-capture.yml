@@ -15,11 +15,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout M2B repo (for scripts)
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          path: m2b
+
+      - name: Checkout M2B-Data repo (for markdown files)
+        uses: actions/checkout@v4
+        with:
+          repository: chrisbarkerza/M2B-Data
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: m2b-data
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd .github/scripts
+          cd m2b/.github/scripts
           npm install
 
       - name: Process capture with Claude API
@@ -38,28 +44,22 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          DATA_REPO_PATH: ../m2b-data
         run: |
+          cd m2b
           node .github/scripts/process-capture.js
 
       - name: Commit changes
         run: |
+          cd m2b-data
           git config user.name "M2B Bot"
           git config user.email "m2b-bot@users.noreply.github.com"
           git add .
-
-          # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            git commit -m "M2B: Process capture from issue #${{ github.event.issue.number }}"
-            git push
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          fi
+          git commit -m "M2B: Process capture from issue #${{ github.event.issue.number }}" || echo "No changes to commit"
+          git push
         id: commit
 
       - name: Comment on issue with results
-        if: steps.commit.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -70,7 +70,7 @@ jobs:
 
             // Try to read the classification result
             try {
-              const result = fs.readFileSync('.github/result.json', 'utf8');
+              const result = fs.readFileSync('m2b/.github/result.json', 'utf8');
               const data = JSON.parse(result);
 
               resultComment += `**Classification:** ${data.category}\n`;
@@ -85,7 +85,7 @@ jobs:
                 resultComment += '\n';
               }
 
-              resultComment += `View changes: [Commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})`;
+              resultComment += 'View changes in the M2B-Data repository.';
             } catch (e) {
               resultComment += 'See commit for details.';
             }

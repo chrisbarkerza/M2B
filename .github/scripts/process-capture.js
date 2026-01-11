@@ -15,6 +15,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
 const path = require('path');
 
+const DATA_REPO_PATH = process.env.DATA_REPO_PATH
+  ? path.resolve(process.env.DATA_REPO_PATH)
+  : process.cwd();
+
 // Initialize Claude API
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -35,7 +39,7 @@ const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0]; // Y
 console.log('Processing capture:', captureText);
 
 // Read the m2b-inbox skill for classification logic
-const skillPath = path.join(process.cwd(), '.claude/skills/m2b-inbox/skill.md');
+const skillPath = path.join(DATA_REPO_PATH, '.claude/skills/m2b-inbox/skill.md');
 let classifierPrompt = '';
 
 try {
@@ -122,7 +126,7 @@ function executeFileOperations(classification) {
   const filesModified = [];
 
   operations.forEach(op => {
-    const filePath = path.join(process.cwd(), op.file_path);
+    const filePath = path.join(DATA_REPO_PATH, op.file_path);
     console.log(`Executing ${op.action} on ${op.file_path}`);
 
     try {
@@ -179,7 +183,7 @@ function executeFileOperations(classification) {
 }
 
 function logToInbox(classification, captureText, filesModified) {
-  const inboxLogPath = path.join(process.cwd(), 'md/inbox-log.md');
+  const inboxLogPath = path.join(DATA_REPO_PATH, 'md/inbox-log.md');
 
   let logEntry = `\n## ${timestamp} [GitHub Issue #${issueNumber}]\n`;
   logEntry += `**Input**: "${captureText.substring(0, 200)}${captureText.length > 200 ? '...' : ''}"\n`;

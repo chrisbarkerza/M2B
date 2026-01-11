@@ -336,11 +336,10 @@
                             placeholder="ghp_xxxxxxxxxxxxx"
                         >
                         <p class="help-text">
-                            Create a token at
-                            <a href="https://github.com/settings/tokens/new" target="_blank">
-                                github.com/settings/tokens
-                            </a>
-                            with repo permissions
+                            Token needs full <strong>repo</strong> scope to access your private M2B-Data repository.
+                            <a href="https://github.com/settings/tokens/new" target="_blank">Create new token</a>
+                            |
+                            <a href="#" onclick="showTokenInstructions(); return false;">Step-by-step instructions</a>
                         </p>
                     </div>
 
@@ -349,9 +348,10 @@
                         <input
                             type="text"
                             id="githubRepo"
-                            placeholder="username/M2B"
-                            value="chrisbarkerza/M2B"
+                            placeholder="username/M2B-Data"
+                            value="chrisbarkerza/M2B-Data"
                         >
+                        <p class="help-text">Default: chrisbarkerza/M2B-Data (your private data repo)</p>
                     </div>
 
                     <div class="setting-group">
@@ -368,6 +368,29 @@
                             <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Instructions -->
+        <div id="token-instructions" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>How to Get a GitHub Token</h2>
+                    <button class="close-btn" onclick="showTokenInstructions()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <ol>
+                        <li>Open <a href="https://github.com/settings/tokens/new" target="_blank">https://github.com/settings/tokens/new</a></li>
+                        <li>If prompted, choose <strong>Generate new token (classic)</strong></li>
+                        <li>Note: enter a name like "M2B Data Access"</li>
+                        <li>Expiration: choose a date (or "No expiration" if you prefer)</li>
+                        <li>Scopes: check <strong>repo</strong> (full control of private repositories)</li>
+                        <li>Scroll down and click <strong>Generate token</strong></li>
+                        <li>Copy the token immediately (starts with <strong>ghp_</strong>)</li>
+                        <li>Paste it into the GitHub Token field and click <strong>Save Settings</strong></li>
+                    </ol>
+                    <p><strong>Important:</strong> GitHub only shows the token once. Save it in a password manager.</p>
                 </div>
             </div>
         </div>

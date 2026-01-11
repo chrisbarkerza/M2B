@@ -5,7 +5,7 @@
 // App State
 const AppState = {
     token: localStorage.getItem('github_token') || '',
-    repo: localStorage.getItem('github_repo') || 'chrisbarkerza/M2B',
+    repo: localStorage.getItem('github_repo') || 'chrisbarkerza/M2B-Data',
     isOnline: navigator.onLine,
     currentView: 'capture',
     data: {
@@ -1577,5 +1577,12 @@ if (document.readyState === 'loading') {
     UI.init();
 }
 
+function showTokenInstructions() {
+    const instructions = document.getElementById('token-instructions');
+    if (!instructions) return;
+    instructions.classList.toggle('hidden');
+}
+
 // Expose UI methods globally for inline event handlers
 window.UI = UI;
+window.showTokenInstructions = showTokenInstructions;
