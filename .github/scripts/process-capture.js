@@ -67,7 +67,7 @@ CRITICAL INSTRUCTIONS:
     "due_date": "YYYY-MM-DD",
     "tags": ["tag1", "tag2"],
     "urgency": "today|soon|long_term",
-    "shopping_category": "supplements|pharmacy|food",
+    "shopping_category": "supplements|pharmacy|household",
     "items": ["item1", "item2"],
     "project_name": "existing-project-name-if-applicable"
   },

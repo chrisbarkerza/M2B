@@ -693,8 +693,8 @@ class UI {
 
     static handleMoreAction(action) {
         switch (action) {
-            case 'tasks':
-                this.switchView('tasks');
+            case 'projects':
+                this.switchView('projects');
                 break;
             case 'files':
                 this.showFileViewer();
@@ -1406,7 +1406,7 @@ class UI {
             );
 
             if (files.length === 0) {
-                content.innerHTML = `<div class="empty-state">No files found. <button class="btn btn-small" onclick="UI.showCreateFileDialog('${directory}', '${viewType}')">Create New</button></div>`;
+                content.innerHTML = `<div class="empty-state">No files found. Use the + button to create new files.</div>`;
                 return;
             }
 
@@ -1469,7 +1469,6 @@ class UI {
         }
 
         let html = '<div class="accordion">';
-        html += `<button class="btn btn-small" onclick="UI.showCreateFileDialog('${data.directory}', '${viewType}')" style="margin-bottom: 8px;">+ New File</button>`;
 
         data.files.forEach((file, fileIndex) => {
             const expandedClass = file.expanded ? 'expanded' : '';
@@ -1772,42 +1771,7 @@ class UI {
     }
 
     static async loadTasks() {
-        const content = document.getElementById('tasksContent');
-        content.innerHTML = '<div class="loading">Loading tasks...</div>';
-
-        try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            const todoContent = await api.getFile('md/ToDo/ToDo.md');
-
-            // Parse the ToDo.md file
-            const tasks = { today: [], soon: [], longTerm: [] };
-            let currentSection = null;
-
-            todoContent.split('\n').forEach(line => {
-                if (line.includes('## Today')) {
-                    currentSection = 'today';
-                    return;
-                }
-                if (line.includes('## Soon')) {
-                    currentSection = 'soon';
-                    return;
-                }
-                if (line.includes('## Long term')) {
-                    currentSection = 'longTerm';
-                    return;
-                }
-
-                const taskMatch = line.match(/^- \[ \] (.+)$/);
-                if (taskMatch && currentSection) {
-                    tasks[currentSection].push(taskMatch[1]);
-                }
-            });
-
-            AppState.data.todo = tasks;
-            this.renderTasks();
-        } catch (error) {
-            content.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
-        }
+        await this.loadAccordionView('tasksContent', 'md/ToDo', 'tasks');
     }
 
     static renderTasks() {
