@@ -2,7 +2,7 @@ name: Process Second Brain Capture
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
 jobs:
   process-capture:
     # Only run if issue has 'capture' label
-    if: contains(github.event.issue.labels.*.name, 'capture')
+    if: github.event.label.name == 'capture'
     runs-on: ubuntu-latest
 
     steps:
@@ -49,14 +49,31 @@ jobs:
           cd m2b
           node .github/scripts/process-capture.js
 
-      - name: Commit changes
+      - name: Commit changes to M2B-Data
         run: |
           cd m2b-data
+
+          # Debug: Show current directory and git remote
+          pwd
+          git remote -v
+          git status
+
+          # Configure git
           git config user.name "M2B Bot"
           git config user.email "m2b-bot@users.noreply.github.com"
+
+          # Add and commit changes
           git add .
-          git commit -m "M2B: Process capture from issue #${{ github.event.issue.number }}" || echo "No changes to commit"
-          git push
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "M2B: Process capture from issue #${{ github.event.issue.number }}"
+            git push
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
         id: commit
 
       - name: Comment on issue with results
