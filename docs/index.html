@@ -340,6 +340,8 @@
                             <a href="https://github.com/settings/tokens/new" target="_blank">Create new token</a>
                             |
                             <a href="#" onclick="showTokenInstructions(); return false;">Step-by-step instructions</a>
+                            |
+                            <a href="#" onclick="localStorage.removeItem('github_repo'); localStorage.removeItem('github_token'); location.reload(); return false;">Clear saved token</a>
                         </p>
                     </div>
 
@@ -354,18 +356,18 @@
                         <p class="help-text">Default: chrisbarkerza/M2B-Data (your private data repo)</p>
                     </div>
 
-                    <div class="setting-group">
-                        <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+                    <div class="setting-group setting-actions">
                         <button id="testConnectionBtn" class="btn btn-secondary">Test Connection</button>
+                        <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
                     </div>
 
                     <div class="setting-group">
                         <h3>Offline Data</h3>
                         <p>Last synced: <span id="lastSync">Never</span></p>
                         <p id="queueStatus" style="display: none;">Pending changes: <span id="queueCount">0</span></p>
-                        <div style="display: flex; gap: 8px;">
-                            <button id="forceSyncBtn" class="btn btn-primary">Force Sync</button>
+                        <div class="setting-actions">
                             <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
+                            <button id="forceSyncBtn" class="btn btn-primary">Force Sync</button>
                         </div>
                     </div>
                 </div>

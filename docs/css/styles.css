@@ -838,6 +838,19 @@ body {
     margin-bottom: 20px;
 }
 
+.setting-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.setting-actions .btn {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    margin-top: 0;
+    padding: 0 16px;
+}
+
 .setting-group label {
     display: block;
     font-weight: 600;
