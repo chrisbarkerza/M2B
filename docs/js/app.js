@@ -260,6 +260,29 @@ class UI {
 
         AppState.currentView = viewName;
 
+        // Update app title
+        const titleMap = {
+            'capture': 'Capture',
+            'shopping': 'Shopping',
+            'notes': 'Notes',
+            'projects': 'Projects',
+            'tasks': 'Tasks',
+            'more': 'More'
+        };
+        const appTitle = document.getElementById('appTitle');
+        if (appTitle) {
+            const titleText = appTitle.childNodes[appTitle.childNodes.length - 1];
+            if (titleText && titleText.nodeType === Node.TEXT_NODE) {
+                titleText.textContent = titleMap[viewName] || 'M2B';
+            }
+        }
+
+        // Show/hide appropriate + button
+        document.getElementById('addShoppingBtn').style.display = viewName === 'shopping' ? '' : 'none';
+        document.getElementById('addNotesBtn').style.display = viewName === 'notes' ? '' : 'none';
+        document.getElementById('addProjectsBtn').style.display = viewName === 'projects' ? '' : 'none';
+        document.getElementById('addTasksBtn').style.display = viewName === 'tasks' ? '' : 'none';
+
         // Load data for view
         if (viewName === 'shopping' && !AppState.data.shopping) {
             this.loadShopping();
@@ -752,6 +775,20 @@ class UI {
                 const captureInput = document.getElementById('captureInput');
                 if (captureInput) {
                     captureInput.value = 'Add to Projects ';
+                    captureInput.focus();
+                    captureInput.setSelectionRange(captureInput.value.length, captureInput.value.length);
+                }
+            });
+        }
+
+        // Add to Tasks button
+        const addTasksBtn = document.getElementById('addTasksBtn');
+        if (addTasksBtn) {
+            addTasksBtn.addEventListener('click', () => {
+                this.switchView('capture');
+                const captureInput = document.getElementById('captureInput');
+                if (captureInput) {
+                    captureInput.value = 'Add to Tasks ';
                     captureInput.focus();
                     captureInput.setSelectionRange(captureInput.value.length, captureInput.value.length);
                 }
