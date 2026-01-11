@@ -1,9 +1,8 @@
 {
-  "category": "note",
-  "confidence": 45,
-  "context": "personal",
-  "location": "md/notes/reference/testing-one-two-three.md",
+  "category": "shopping",
+  "confidence": 95,
+  "location": "md/Shopping/Shopping.md",
   "additional_locations": [
-    "md/inbox/inbox-log.md"
+    "md/Shopping/Shopping.md"
   ]
 }
