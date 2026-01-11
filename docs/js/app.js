@@ -714,6 +714,49 @@ class UI {
                 this.syncData();
             });
         }
+
+        // Add to Shopping button
+        const addShoppingBtn = document.getElementById('addShoppingBtn');
+        if (addShoppingBtn) {
+            addShoppingBtn.addEventListener('click', () => {
+                this.switchView('capture');
+                const captureInput = document.getElementById('captureInput');
+                if (captureInput) {
+                    captureInput.value = 'Add to Shopping ';
+                    captureInput.focus();
+                    // Position cursor at end
+                    captureInput.setSelectionRange(captureInput.value.length, captureInput.value.length);
+                }
+            });
+        }
+
+        // Add to Notes button
+        const addNotesBtn = document.getElementById('addNotesBtn');
+        if (addNotesBtn) {
+            addNotesBtn.addEventListener('click', () => {
+                this.switchView('capture');
+                const captureInput = document.getElementById('captureInput');
+                if (captureInput) {
+                    captureInput.value = 'Add to Notes ';
+                    captureInput.focus();
+                    captureInput.setSelectionRange(captureInput.value.length, captureInput.value.length);
+                }
+            });
+        }
+
+        // Add to Projects button
+        const addProjectsBtn = document.getElementById('addProjectsBtn');
+        if (addProjectsBtn) {
+            addProjectsBtn.addEventListener('click', () => {
+                this.switchView('capture');
+                const captureInput = document.getElementById('captureInput');
+                if (captureInput) {
+                    captureInput.value = 'Add to Projects ';
+                    captureInput.focus();
+                    captureInput.setSelectionRange(captureInput.value.length, captureInput.value.length);
+                }
+            });
+        }
     }
 
     static async clearCompletedShopping() {

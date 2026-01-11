@@ -147,6 +147,11 @@ body {
 
 .view-header {
     margin-bottom: var(--spacing);
+    position: relative;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .view-header h2 {
@@ -158,6 +163,27 @@ body {
 .view-subtitle {
     color: var(--text-light);
     font-size: 0.9rem;
+}
+
+.view-header .btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 300;
+    line-height: 1;
+}
+
+.view-header .btn-icon:hover {
+    background: var(--primary-dark);
 }
 
 .view-header-actions {
