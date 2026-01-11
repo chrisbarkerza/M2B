@@ -25,7 +25,7 @@ Classification Result (JSON with confidence score)
     ↓
 File Operations (append/create markdown files)
     ↓
-Audit Trail (inbox-log.md)
+Audit Trail (md/inbox-log.md)
     ↓
 GitHub Commit (automated)
 ```
@@ -44,10 +44,10 @@ GitHub Commit (automated)
 - Comments result back to issue, closes it
 
 **3. Storage Layer**
-- Markdown files with YAML frontmatter in `md/` directory
-- Structured by type and context (personal/work)
+- Markdown files in simplified `md/` structure
+- No frontmatter (keep it simple!)
 - Git version control for history
-- Audit trail in `md/inbox/inbox-log.md`
+- Audit trail in `md/inbox-log.md`
 
 ### Critical Design Patterns
 
@@ -60,89 +60,106 @@ GitHub Commit (automated)
 **Confidence Scoring**: Every classification includes 0-100 confidence score
 - ≥75%: Auto-file
 - <75%: Ask for clarification
-- 100%: User-corrected (via m2b-fix skill)
 
 ## Data Model
-
-### Frontmatter Schema
-
-All markdown files use structured YAML frontmatter. Templates in `md/templates/`:
-
-**Projects** (`md/projects/{context}/{status}/{slug}.md`):
-```yaml
-type: project
-title: string
-context: personal | work
-status: active | waiting | blocked | done
-priority: low | medium | high | critical
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-tags: []
-blockers: []          # if blocked
-waiting_on: string    # if waiting
-linked_ideas: []
-next_actions: []
-confidence: 0-100
-```
-
-**People** (`md/people/{relationship}/{slug}.md`):
-```yaml
-type: person
-name: string
-relationship: family | friends | professional | business
-context: personal | work
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-tags: []
-birthday: YYYY-MM-DD (optional)
-confidence: 0-100
-```
-
-**Ideas** (`md/ideas/{domain}/{slug}.md`):
-```yaml
-type: idea
-title: string
-domain: tech | business | personal | creative
-maturity: seed | developing | validated | mature | abandoned
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-tags: []
-linked_projects: []
-potential_value: low | medium | high
-effort: low | medium | high | unknown
-confidence: 0-100
-```
-
-**Tasks** (inline in `md/admin/{context}/{urgency}.md`):
-```markdown
-## Active
-- [ ] **Task description** (due: YYYY-MM-DD) [confidence: 85] #tag
-
-## Completed
-- [x] **Task description** (completed: YYYY-MM-DD) [confidence: 92]
-```
-
-**Shopping** (inline in `md/shopping.md`):
-```markdown
-## {Category}
-- [ ] Item name
-- [x] Completed item
-```
 
 ### File Organization
 
 ```
 md/
-├── projects/{context}/{status}/     # personal|work / active|waiting|blocked|done
-├── people/{relationship}/            # family|friends|professional|business
-├── ideas/{domain}/                   # tech|business|personal|creative
-├── admin/{context}/                  # personal|work
-│   ├── urgent.md                    # Due within 7 days
-│   └── longer-term.md               # Due later or no deadline
-├── notes/{category}/                 # daily|meetings|reference
-├── shopping.md                       # Shopping list (root level for quick access)
-├── inbox/inbox-log.md               # Audit trail
-└── templates/                        # Frontmatter schemas
+├── Shopping/
+│   ├── Shopping.md              # Main shopping list
+│   └── Done.md                  # Completed items with dates
+├── ToDo.md                      # All tasks organized by urgency
+├── Done.md                      # Completed tasks with dates
+├── Projects/
+│   ├── {project-name}.md        # One file per project
+│   └── Done/                    # Manually moved completed projects
+├── Notes/
+│   ├── {note-name}.md           # One file per note
+│   └── Done/                    # Manually moved archived notes
+└── inbox-log.md                 # Audit trail
+```
+
+### File Formats
+
+**Shopping** (`md/Shopping/Shopping.md`):
+```markdown
+# Shopping List
+
+## Supplements
+- [ ] Protein powder
+- [ ] Multivitamins
+
+## Pharmacy
+- [ ] Pain relievers
+- [ ] First aid supplies
+
+## Food
+- [ ] Milk
+- [ ] Eggs
+```
+
+**Shopping Done** (`md/Shopping/Done.md`):
+```markdown
+# Shopping - Completed
+
+- [x] Protein powder (completed: 2026-01-11)
+- [x] Milk (completed: 2026-01-10)
+```
+
+**ToDo** (`md/ToDo.md`):
+```markdown
+# To Do
+
+## Today
+- [ ] Call dentist
+- [ ] Submit report
+
+## Soon
+- [ ] Review project proposal
+- [ ] Book flight
+
+## Long term
+- [ ] Research new framework
+- [ ] Plan summer vacation
+```
+
+**ToDo Done** (`md/Done.md`):
+```markdown
+# To Do - Completed
+
+- [x] Call dentist (completed: 2026-01-11)
+- [x] Submit report (completed: 2026-01-11)
+```
+
+**Projects** (`md/Projects/website-redesign.md`):
+```markdown
+# Website Redesign
+
+## Actions
+- [ ] Research design trends
+- [ ] Create wireframes
+- [ ] Get client approval
+- [x] Initial discovery meeting (completed: 2026-01-10)
+
+## Notes
+Client wants modern, clean look. Focus on mobile-first design.
+Budget: $10k. Timeline: 6 weeks.
+```
+
+**Notes** (`md/Notes/meeting-jan-11.md`):
+```markdown
+# Team Meeting - January 11
+
+## Key Points
+- Q1 goals finalized
+- New hire starting next week
+- Budget approved for new tools
+
+## Action Items
+- [ ] Send welcome email to new hire
+- [ ] Order equipment
 ```
 
 ## Development Commands
@@ -182,12 +199,6 @@ git push
 - `docs/service-worker.js` - Offline caching and background sync
 - `docs/manifest.json` - PWA manifest for installation
 
-**Key PWA Classes**:
-- `GitHubAPI` - GitHub REST API client
-- `DataParser` - Parse markdown frontmatter
-- `UI` - View management and rendering
-- `QueueManager` - Offline sync queue
-
 ### Claude Code Skills
 
 **Invoke capture skill**:
@@ -199,25 +210,24 @@ git push
 
 **Available skills** (in `.claude/skills/`):
 - `m2b-inbox/` - Capture and classify input (ACTIVE)
-- `m2b-digest/` - Daily digest generator (PLANNED)
-- `m2b-review/` - Weekly review (PLANNED)
-- `m2b-fix/` - Fix misclassifications (PLANNED)
 
 ## Making Changes
 
 ### Adding New Categories
 
-1. Update `m2b-inbox` skill classification logic
-2. Add template to `md/templates/{category}.md`
-3. Create directory structure in `md/`
+To add a new category type:
+
+1. Update `m2b-inbox` skill classification logic in `.claude/skills/m2b-inbox/skill.md`
+2. Add section to existing file OR create new directory structure
+3. Update `process-capture.js` file operations handler
 4. Update PWA views in `docs/js/app.js` if needed
-5. Update `process-capture.js` file operations handler
 
 ### Modifying Classification Logic
 
 Edit `.claude/skills/m2b-inbox/skill.md`:
 - Classification rules are in system prompt
-- Context detection keywords
+- Urgency detection keywords
+- Shopping category detection
 - Confidence scoring heuristics
 - Output format (JSON schema for automation mode)
 
@@ -229,44 +239,38 @@ The PWA uses vanilla JavaScript (no build step):
 3. Edit `docs/css/styles.css` for styling
 4. Update `docs/service-worker.js` for offline caching
 
-**Key PWA patterns**:
-- Bottom navigation switches views by toggling `.active` class
-- Data loaded lazily when view first accessed
-- Offline queue stored in `localStorage`
-- GitHub API pagination for large result sets
-
-### Modifying Frontmatter Schema
-
-1. Update template file in `md/templates/`
-2. Update m2b-inbox skill output format
-3. Update PWA parser in `docs/js/app.js` (`DataParser.parseFrontmatter()`)
-4. Update GitHub Actions script if automation mode affected
-
 ## Important Constraints
 
 ### Confidence Scoring Rules
 
 Calculate confidence based on:
-- **High (90-100)**: Explicit keywords ("buy", "idea:", due date with task)
-- **Medium (75-89)**: Clear intent, minor ambiguity (context unclear)
+- **High (90-100)**: Explicit keywords ("buy", "today", specific category)
+- **Medium (75-89)**: Clear intent, minor ambiguity
 - **Low (<75)**: Vague or multi-interpretable input → trigger Bouncer
 
-### Context Detection Priority
+### Urgency Detection (for ToDo)
 
-1. Explicit keywords: "work", "office" → work; "personal", "home" → personal
-2. Time heuristic: 9am-5pm weekdays slightly favor work
-3. Default: personal (safer assumption for privacy)
+**Today**: "today", "tonight", "ASAP", "urgent", "now"
+**Soon**: "tomorrow", "this week", weekday names, "next few days"
+**Long term**: "next week", "next month", "eventually", "sometime", no deadline
+
+### Shopping Category Detection
+
+**Supplements**: vitamins, protein, supplements, health products
+**Pharmacy**: medications, first aid, healthcare items
+**Food**: groceries, snacks, beverages, food items
 
 ### File Naming Conventions
 
 - Slugify titles: lowercase, hyphens, no special chars
-- Conflict resolution: append `-{context}` or `-{timestamp}`
-- Preserve original title in frontmatter `title` field
+- Max 50 characters
+- Conflict resolution: append `-2`, `-3`, etc.
+- Example: "AI-Powered Recipe App" → "ai-powered-recipe-app.md"
 
 ### Git Commit Messages
 
 Format: `M2B: Process capture from issue #{number}`
-- Automated commits by "M2B Bot" user
+- Automated commits by GitHub Actions
 - Manual commits can use any format
 
 ## Testing Capture Flow
@@ -274,8 +278,8 @@ Format: `M2B: Process capture from issue #{number}`
 **End-to-end test**:
 1. Create GitHub issue with "capture" label and body: "Buy milk and eggs"
 2. Verify GitHub Actions workflow runs successfully
-3. Check `md/shopping.md` for new items
-4. Check `md/inbox/inbox-log.md` for audit entry
+3. Check `md/Shopping/Shopping.md` for new items under ## Food
+4. Check `md/inbox-log.md` for audit entry
 5. Verify issue has bot comment with classification result
 6. Verify issue is closed
 
@@ -289,13 +293,54 @@ Format: `M2B: Process capture from issue #{number}`
 
 ## Special Files
 
-- `md/shopping.md` - At root level (not in subdirectory) for quick mobile access
-- `md/inbox/inbox-log.md` - Append-only audit trail, never delete entries
+- `md/Shopping/Shopping.md` - Main shopping list with 3 sections
+- `md/ToDo.md` - All tasks organized by urgency (Today/Soon/Long term)
+- `md/Done.md` - Completed tasks with dates
+- `md/Shopping/Done.md` - Completed shopping items with dates
+- `md/inbox-log.md` - Append-only audit trail, never delete entries
 - `.github/result.json` - Temporary file created by process-capture.js, read by workflow
+
+## Completion Workflow
+
+### Shopping Items
+
+When user checks an item in Shopping.md:
+1. Move item from Shopping.md to Shopping/Done.md
+2. Add completion date: `- [x] Item (completed: YYYY-MM-DD)`
+
+### ToDo Items
+
+When user checks a task in ToDo.md:
+1. Move item from ToDo.md to Done.md
+2. Add completion date: `- [x] Task (completed: YYYY-MM-DD)`
+
+### Project Actions
+
+When user checks an action item in a project file:
+1. Keep in same file (don't move to separate file)
+2. Move to bottom of ## Actions section
+3. Add completion date: `- [x] Action (completed: YYYY-MM-DD)`
+
+When entire project is complete:
+1. User manually moves file from `md/Projects/` to `md/Projects/Done/`
+
+### Notes
+
+When user checks an action item in a note:
+1. Keep in same file
+2. Move to bottom of section
+3. Add completion date: `- [x] Item (completed: YYYY-MM-DD)`
+
+When entire note should be archived:
+1. User manually moves file from `md/Notes/` to `md/Notes/Done/`
+
+## UI/UX Guidelines
+
+**Icons**: This app uses Lucide SVG icons only (https://lucide.dev). All icons should be inline SVG from Lucide.
 
 ## User Context
 
 - User: Chris Barker (chrisbarkerza)
 - Primary usage: Mobile capture throughout day, desktop review
-- Preferences: Prefers todo lists with priority, manual archiving, custom ordering
-- Working style: Big todo list view, tick items off, archive completed work
+- Preferences: Simple structure, minimal frontmatter, manual archiving
+- Working style: Big todo list view, tick items off, archive when done

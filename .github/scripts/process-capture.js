@@ -55,18 +55,24 @@ CRITICAL INSTRUCTIONS:
 - The JSON must follow this exact schema:
 
 {
-  "category": "shopping|admin_urgent|admin_longer_term|project|person|idea|note",
+  "category": "shopping|todo_today|todo_soon|todo_long_term|project|note",
   "confidence": 85,
-  "context": "personal|work",
   "classification_reason": "Brief explanation",
   "extracted_data": {
-    // Category-specific fields
+    "title": "Optional title",
+    "due_date": "YYYY-MM-DD",
+    "tags": ["tag1", "tag2"],
+    "urgency": "today|soon|long_term",
+    "shopping_category": "supplements|pharmacy|food",
+    "items": ["item1", "item2"],
+    "project_name": "existing-project-name-if-applicable"
   },
   "file_operations": [
     {
-      "action": "append|create|update",
+      "action": "append|create",
       "file_path": "relative/path/to/file.md",
-      "content": "content to write"
+      "content": "content to write",
+      "section": "Section name within file (optional)"
     }
   ]
 }`;
@@ -134,23 +140,34 @@ function executeFileOperations(classification) {
         // Append to existing file (or create if doesn't exist)
         if (fs.existsSync(filePath)) {
           const existing = fs.readFileSync(filePath, 'utf8');
-          // Append after the frontmatter and Active section
           let updated;
-          if (existing.includes('## Active')) {
-            updated = existing.replace('## Active', `## Active\n${op.content}`);
+
+          // If section is specified, append after that section header
+          if (op.section) {
+            const sectionHeader = `## ${op.section}`;
+            if (existing.includes(sectionHeader)) {
+              // Find the section and append right after the header
+              const lines = existing.split('\n');
+              const sectionIndex = lines.findIndex(line => line.trim() === sectionHeader);
+              if (sectionIndex !== -1) {
+                lines.splice(sectionIndex + 1, 0, op.content);
+                updated = lines.join('\n');
+              } else {
+                updated = existing + '\n' + op.content;
+              }
+            } else {
+              // Section doesn't exist, just append
+              updated = existing + '\n' + op.content;
+            }
           } else {
+            // No section specified, just append
             updated = existing + '\n' + op.content;
           }
-          // Update the 'updated' date in frontmatter
-          updated = updated.replace(/updated: \d{4}-\d{2}-\d{2}/, `updated: ${today}`);
+
           fs.writeFileSync(filePath, updated, 'utf8');
         } else {
           fs.writeFileSync(filePath, op.content, 'utf8');
         }
-        filesModified.push(op.file_path);
-      } else if (op.action === 'update') {
-        // Update existing file
-        fs.writeFileSync(filePath, op.content, 'utf8');
         filesModified.push(op.file_path);
       }
     } catch (error) {
@@ -162,13 +179,12 @@ function executeFileOperations(classification) {
 }
 
 function logToInbox(classification, captureText, filesModified) {
-  const inboxLogPath = path.join(process.cwd(), 'md/inbox/inbox-log.md');
+  const inboxLogPath = path.join(process.cwd(), 'md/inbox-log.md');
 
   let logEntry = `\n## ${timestamp} [GitHub Issue #${issueNumber}]\n`;
   logEntry += `**Input**: "${captureText.substring(0, 200)}${captureText.length > 200 ? '...' : ''}"\n`;
   logEntry += `**Classification**: ${classification.category}\n`;
   logEntry += `**Confidence**: ${classification.confidence}%\n`;
-  logEntry += `**Context**: ${classification.context}\n`;
 
   if (filesModified.length === 1) {
     logEntry += `**Location**: ${filesModified[0]}\n`;
@@ -185,20 +201,19 @@ function logToInbox(classification, captureText, filesModified) {
 
   logEntry += `\n---\n`;
 
+  // Ensure directory exists
+  const logDir = path.dirname(inboxLogPath);
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
   // Append to inbox log
   if (fs.existsSync(inboxLogPath)) {
-    const existing = fs.readFileSync(inboxLogPath, 'utf8');
-    // Insert after the header
-    const lines = existing.split('\n');
-    const headerEnd = lines.findIndex(line => line.includes('<!-- Entries will be appended'));
-    if (headerEnd !== -1) {
-      lines.splice(headerEnd + 1, 0, logEntry);
-      fs.writeFileSync(inboxLogPath, lines.join('\n'), 'utf8');
-    } else {
-      fs.appendFileSync(inboxLogPath, logEntry, 'utf8');
-    }
+    fs.appendFileSync(inboxLogPath, logEntry, 'utf8');
   } else {
-    fs.writeFileSync(inboxLogPath, logEntry, 'utf8');
+    // Create new log file with header
+    const header = `# Inbox Log\n\nAutomatic audit trail of all captures processed by M2B system.\n\n---\n`;
+    fs.writeFileSync(inboxLogPath, header + logEntry, 'utf8');
   }
 }
 
@@ -206,7 +221,6 @@ function writeResult(classification, filesModified) {
   const result = {
     category: classification.category,
     confidence: classification.confidence,
-    context: classification.context,
     location: filesModified[0] || 'unknown',
     additional_locations: filesModified.slice(1),
   };

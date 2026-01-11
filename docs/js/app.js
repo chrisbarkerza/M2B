@@ -8,14 +8,11 @@ const AppState = {
     repo: localStorage.getItem('github_repo') || 'chrisbarkerza/M2B',
     isOnline: navigator.onLine,
     currentView: 'capture',
-    currentContext: 'personal',
-    currentDomain: 'all',
     data: {
         shopping: null,
-        tasks: { personal: { urgent: null, longerTerm: null }, work: { urgent: null, longerTerm: null } },
-        ideas: [],
+        todo: null,
         projects: [],
-        people: []
+        notes: []
     },
     queue: []
 };
@@ -104,21 +101,21 @@ class DataParser {
     }
 
     static parseShoppingList(content) {
-        const { frontmatter, content: body } = this.parseFrontmatter(content);
-        const sections = {};
-        let currentSection = 'Uncategorized';
+        const sections = { Supplements: [], Pharmacy: [], Food: [] };
+        let currentSection = null;
 
-        body.split('\n').forEach(line => {
+        content.split('\n').forEach(line => {
             const sectionMatch = line.match(/^## (.+)$/);
             if (sectionMatch) {
                 currentSection = sectionMatch[1];
-                sections[currentSection] = [];
+                if (!sections[currentSection]) {
+                    sections[currentSection] = [];
+                }
                 return;
             }
 
             const itemMatch = line.match(/^- \[([ x])\] (.+)$/);
-            if (itemMatch) {
-                sections[currentSection] = sections[currentSection] || [];
+            if (itemMatch && currentSection) {
                 sections[currentSection].push({
                     checked: itemMatch[1] === 'x',
                     text: itemMatch[2]
@@ -126,7 +123,7 @@ class DataParser {
             }
         });
 
-        return { frontmatter, sections };
+        return { sections };
     }
 
     static parseTaskList(content) {
@@ -148,12 +145,18 @@ class DataParser {
             if (taskMatch) {
                 const dueMatch = taskMatch[3].match(/\(due: ([^)]+)\)/);
                 const confidenceMatch = taskMatch[3].match(/\[confidence: (\d+)\]/);
+                const priorityMatch = taskMatch[3].match(/\[priority: (\w+)\]/);
+                const orderMatch = taskMatch[3].match(/\[order: (\d+)\]/);
+                const projectMatch = taskMatch[3].match(/\[project: ([^\]]+)\]/);
 
                 tasks[currentSection].push({
                     checked: taskMatch[1] === 'x',
                     text: taskMatch[2],
                     due: dueMatch ? dueMatch[1] : null,
                     confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : null,
+                    priority: priorityMatch ? priorityMatch[1] : 'medium',
+                    order: orderMatch ? parseInt(orderMatch[1]) : 999,
+                    project: projectMatch ? projectMatch[1] : null,
                     raw: line
                 });
             }
@@ -1438,6 +1441,17 @@ class UI {
         const content = document.getElementById('tasksContent');
         const { urgent, longerTerm } = AppState.data.tasks[context];
 
+        const priorityIcons = {
+            critical: '🔴',
+            high: '🟠',
+            medium: '🟡',
+            low: '⚪'
+        };
+
+        // Sort tasks by order field (manual ordering)
+        const sortedUrgent = [...urgent.tasks.active].sort((a, b) => a.order - b.order);
+        const sortedLongerTerm = [...longerTerm.tasks.active].sort((a, b) => a.order - b.order);
+
         let html = `
             <div class="section">
                 <h3>
@@ -1449,15 +1463,29 @@ class UI {
                 <div class="checklist">
         `;
 
-        urgent.tasks.active.forEach(task => {
+        sortedUrgent.forEach((task, index) => {
             const dueText = task.due ? ` <span class="due-date">(due: ${task.due})</span>` : '';
+            const priorityIcon = priorityIcons[task.priority] || priorityIcons.medium;
+            const projectLink = task.project ? ` <a href="#" class="task-project-link" data-project="${task.project}">→ ${task.project}</a>` : '';
+
             html += `
-                <label class="checklist-item">
-                    <input type="checkbox">
-                    <span class="checklist-text"><strong>${task.text}</strong>${dueText}</span>
-                </label>
+                <div class="checklist-item-wrapper">
+                    <label class="checklist-item priority-${task.priority}">
+                        <input type="checkbox" data-context="${context}" data-urgency="urgent" data-task-text="${task.text}">
+                        <span class="task-priority-icon">${priorityIcon}</span>
+                        <span class="checklist-text"><strong>${task.text}</strong>${dueText}${projectLink}</span>
+                    </label>
+                    <div class="task-reorder-btns">
+                        <button class="icon-btn-small task-reorder-up" data-index="${index}" data-urgency="urgent" ${index === 0 ? 'disabled' : ''} title="Move up">▲</button>
+                        <button class="icon-btn-small task-reorder-down" data-index="${index}" data-urgency="urgent" ${index === sortedUrgent.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+                    </div>
+                </div>
             `;
         });
+
+        if (sortedUrgent.length === 0) {
+            html += '<div class="empty-state">No urgent tasks! 🎉</div>';
+        }
 
         html += '</div></div>';
 
@@ -1475,18 +1503,43 @@ class UI {
                 <div class="checklist">
         `;
 
-        longerTerm.tasks.active.forEach(task => {
+        sortedLongerTerm.forEach((task, index) => {
+            const dueText = task.due ? ` <span class="due-date">(due: ${task.due})</span>` : '';
+            const priorityIcon = priorityIcons[task.priority] || priorityIcons.medium;
+            const projectLink = task.project ? ` <a href="#" class="task-project-link" data-project="${task.project}">→ ${task.project}</a>` : '';
+
             html += `
-                <label class="checklist-item">
-                    <input type="checkbox">
-                    <span class="checklist-text"><strong>${task.text}</strong></span>
-                </label>
+                <div class="checklist-item-wrapper">
+                    <label class="checklist-item priority-${task.priority}">
+                        <input type="checkbox" data-context="${context}" data-urgency="longer-term" data-task-text="${task.text}">
+                        <span class="task-priority-icon">${priorityIcon}</span>
+                        <span class="checklist-text"><strong>${task.text}</strong>${dueText}${projectLink}</span>
+                    </label>
+                    <div class="task-reorder-btns">
+                        <button class="icon-btn-small task-reorder-up" data-index="${index}" data-urgency="longer-term" ${index === 0 ? 'disabled' : ''} title="Move up">▲</button>
+                        <button class="icon-btn-small task-reorder-down" data-index="${index}" data-urgency="longer-term" ${index === sortedLongerTerm.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+                    </div>
+                </div>
             `;
         });
+
+        if (sortedLongerTerm.length === 0) {
+            html += '<div class="empty-state">No longer-term tasks</div>';
+        }
 
         html += '</div></div>';
 
         content.innerHTML = html;
+
+        // Add event listeners for project links
+        document.querySelectorAll('.task-project-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const projectSlug = link.dataset.project;
+                UI.showToast(`Opening project: ${projectSlug}`, 'info');
+                // TODO: Navigate to project view
+            });
+        });
     }
 
     static async showIdeasModal() {
