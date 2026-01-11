@@ -59,14 +59,13 @@ CRITICAL INSTRUCTIONS:
 - The JSON must follow this exact schema:
 
 {
-  "category": "shopping|todo_today|todo_soon|todo_long_term|project|note",
+  "category": "shopping|task|project|note",
   "confidence": 85,
   "classification_reason": "Brief explanation",
   "extracted_data": {
     "title": "Optional title",
     "due_date": "YYYY-MM-DD",
     "tags": ["tag1", "tag2"],
-    "urgency": "today|soon|long_term",
     "shopping_category": "supplements|pharmacy|household",
     "items": ["item1", "item2"],
     "project_name": "existing-project-name-if-applicable"
