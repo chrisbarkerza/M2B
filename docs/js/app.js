@@ -602,25 +602,6 @@ class UI {
             }
         });
 
-        document.getElementById('forceSyncBtn').addEventListener('click', async () => {
-            const syncBtn = document.getElementById('forceSyncBtn');
-            const originalText = syncBtn.textContent;
-            syncBtn.disabled = true;
-            syncBtn.textContent = 'Syncing...';
-
-            try {
-                await QueueManager.processQueue();
-                localStorage.setItem('last_sync', new Date().toISOString());
-                this.updateSyncStatus();
-                this.showToast('Sync completed', 'success');
-            } catch (error) {
-                this.showToast('Sync failed: ' + error.message, 'error');
-            } finally {
-                syncBtn.disabled = false;
-                syncBtn.textContent = originalText;
-            }
-        });
-
         document.getElementById('clearCacheBtn').addEventListener('click', () => {
             if (confirm('Clear all cached data?')) {
                 AppState.data = {
