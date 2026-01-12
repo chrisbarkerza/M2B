@@ -53,7 +53,7 @@ class LocalStorageManager {
 
     /**
      * Get a file by path
-     * @param {string} path - File path (e.g., "md/ToDo/Work.md")
+     * @param {string} path - File path (e.g., "json/ToDo/Work.json")
      * @returns {Promise<Object|null>}
      */
     static async getFile(path) {
@@ -100,7 +100,7 @@ class LocalStorageManager {
 
     /**
      * Get all files, optionally filtered by directory
-     * @param {string|null} directory - Optional directory filter (e.g., "md/ToDo")
+     * @param {string|null} directory - Optional directory filter (e.g., "json/ToDo")
      * @returns {Promise<Array>}
      */
     static async getAllFiles(directory = null) {

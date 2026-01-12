@@ -1,0 +1,27 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Your AI-powered Second Brain, accessible from anywhere.",
+  "main": "service-worker.js",
+  "scripts": {
+    "build": "esbuild js/prosemirror-bundle.js --bundle --outfile=js/prosemirror.min.js --format=iife --minify",
+    "dev": "python3 -m http.server 8000",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-flat-list": "^0.5.8",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.10.5",
+    "prosemirror-view": "^1.41.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

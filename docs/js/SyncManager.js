@@ -233,7 +233,7 @@ class SyncManager {
         // Determine which directories to load
         const directories = viewName && window.Viewer && Viewer.config[viewName]
             ? [Viewer.config[viewName].directory]
-            : ['md/ToDo', 'md/Shopping', 'md/Projects', 'md/Notes', 'md/Ideas', 'md/People'];
+            : ['json/ToDo', 'json/Shopping', 'json/Projects', 'json/Notes', 'json/Ideas', 'json/People'];
 
         let totalFiles = 0;
 
@@ -243,7 +243,7 @@ class SyncManager {
                 if (!contents) continue;
 
                 const files = contents.filter(item =>
-                    item.type === 'file' && item.name.endsWith('.md')
+                    item.type === 'file' && item.name.endsWith('.json')
                 );
 
                 // Fetch and save each file

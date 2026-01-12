@@ -1,8 +1,7 @@
 /**
- * Viewer - Shared accordion viewer for list-based tabs
+ * Viewer - Shared accordion viewer for ProseMirror-based list tabs
  * Coordinates view loading and delegates to specialized modules
- * Dependencies: ViewerConfig, ChecklistParser, ViewRenderer, ItemEditor, ItemActions,
- *               GestureHandler, DragReorder, HighlightMenu, LocalStorageManager, SyncManager
+ * Dependencies: ViewerConfig, ProseMirrorSetup, ViewRenderer, LocalStorageManager, SyncManager
  */
 const Viewer = {
     /**
@@ -44,9 +43,9 @@ const Viewer = {
                 localFiles.push(...refreshedFiles);
             }
 
-            // Filter out Done.md
+            // Filter out Done.json
             const files = localFiles.filter(f =>
-                !f.path.endsWith('Done.md')
+                !f.path.endsWith('Done.json')
             );
 
             if (files.length === 0) {
@@ -54,13 +53,24 @@ const Viewer = {
                 return;
             }
 
-            // Parse files from local storage using ChecklistParser
+            // Parse JSON files - content is already a ProseMirror document
             const filesData = files.map(file => {
-                const items = ChecklistParser.parseCheckboxItems(file.content);
+                let docJSON;
+                try {
+                    // Parse JSON content
+                    docJSON = typeof file.content === 'string'
+                        ? JSON.parse(file.content)
+                        : file.content;
+                } catch (e) {
+                    console.error(`Failed to parse JSON for ${file.path}:`, e);
+                    docJSON = ProseMirrorSetup.createEmptyDoc();
+                }
+
                 return {
-                    name: file.path.split('/').pop().replace('.md', ''),
+                    name: file.path.split('/').pop().replace('.json', ''),
                     path: file.path,
-                    items: items,
+                    docJSON: docJSON,
+                    editorView: null, // Will be created when accordion is expanded
                     expanded: false
                 };
             });
@@ -75,52 +85,22 @@ const Viewer = {
     /**
      * Update source file (save to local storage)
      * @param {string} path - File path
-     * @param {string} content - New content
+     * @param {Object|string} content - ProseMirror document JSON or JSON string
      * @param {string} message - Commit message (for future use)
      * @param {string} toastMessage - Toast notification message
      */
     async updateSourceFile(path, content, message, toastMessage) {
-        await FileUpdateManager.updateSourceFile(path, content, message, toastMessage);
+        // Convert to JSON string if it's an object
+        const jsonContent = typeof content === 'string'
+            ? content
+            : JSON.stringify(content, null, 2);
+
+        await FileUpdateManager.updateSourceFile(path, jsonContent, message, toastMessage);
     },
 
-    // Expose module methods for backward compatibility
+    // Expose module methods
     render: ViewRenderer.render.bind(ViewRenderer),
-    toggleAccordion: ViewRenderer.toggleAccordion.bind(ViewRenderer),
-    parseCheckboxItems: ChecklistParser.parseCheckboxItems.bind(ChecklistParser),
-    parseHighlight: ChecklistParser.parseHighlight.bind(ChecklistParser),
-    formatItemLine: ChecklistParser.formatItemLine.bind(ChecklistParser),
-    updateCheckboxLineByIndex: ChecklistParser.updateCheckboxLineByIndex.bind(ChecklistParser),
-    removeCheckboxLineByIndex: ChecklistParser.removeCheckboxLineByIndex.bind(ChecklistParser),
-    reorderUncheckedLines: ChecklistParser.reorderUncheckedLines.bind(ChecklistParser),
-    startInlineEdit: ItemEditor.startInlineEdit.bind(ItemEditor),
-    updateItemText: ItemEditor.updateItemText.bind(ItemEditor),
-    insertNewBullet: ItemEditor.insertNewBullet.bind(ItemEditor),
-    completeItem: ItemActions.completeItem.bind(ItemActions),
-    moveItemToDone: ItemActions.moveItemToDone.bind(ItemActions),
-    indentItem: ItemActions.indentItem.bind(ItemActions),
-    outdentItem: ItemActions.outdentItem.bind(ItemActions),
-    applyHighlight: ItemActions.applyHighlight.bind(ItemActions),
-    getItemChildren: ItemActions.getItemChildren.bind(ItemActions),
-    getItemWithChildren: ItemActions.getItemWithChildren.bind(ItemActions),
-    bindInteractions: GestureHandler.bindInteractions.bind(GestureHandler),
-    handleKeyDown: GestureHandler.handleKeyDown.bind(GestureHandler),
-    handlePointerDown: GestureHandler.handlePointerDown.bind(GestureHandler),
-    handlePointerMove: GestureHandler.handlePointerMove.bind(GestureHandler),
-    handlePointerUp: GestureHandler.handlePointerUp.bind(GestureHandler),
-    handlePointerCancel: GestureHandler.handlePointerCancel.bind(GestureHandler),
-    resetGestureState: GestureHandler.resetGestureState.bind(GestureHandler),
-    isGestureTargetValid: GestureHandler.isGestureTargetValid.bind(GestureHandler),
-    findPreviousItemIndex: GestureHandler.findPreviousItemIndex.bind(GestureHandler),
-    findNextItemIndex: GestureHandler.findNextItemIndex.bind(GestureHandler),
-    startDrag: DragReorder.startDrag.bind(DragReorder),
-    updateDragPosition: DragReorder.updateDragPosition.bind(DragReorder),
-    finishDrag: DragReorder.finishDrag.bind(DragReorder),
-    cleanupDrag: DragReorder.cleanupDrag.bind(DragReorder),
-    reorderItems: DragReorder.reorderItems.bind(DragReorder),
-    moveItemToFile: DragReorder.moveItemToFile.bind(DragReorder),
-    ensureHighlightMenu: HighlightMenu.ensureHighlightMenu.bind(HighlightMenu),
-    showHighlightMenu: HighlightMenu.showHighlightMenu.bind(HighlightMenu),
-    hideHighlightMenu: HighlightMenu.hideHighlightMenu.bind(HighlightMenu)
+    toggleAccordion: ViewRenderer.toggleAccordion.bind(ViewRenderer)
 };
 
 window.Viewer = Viewer;

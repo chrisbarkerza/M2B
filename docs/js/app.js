@@ -309,13 +309,52 @@ class UI {
         });
     }
 
-    static handleAddButton(prefillText) {
-        Navigation.switchView('capture');
-        const captureInput = document.getElementById('captureInput');
-        if (captureInput) {
-            captureInput.value = prefillText;
-            captureInput.focus();
-            captureInput.setSelectionRange(prefillText.length, prefillText.length);
+    static async handleAddButton(buttonText) {
+        // Extract view name from button text (e.g., "Add to Tasks " -> "tasks")
+        const viewName = buttonText.toLowerCase().replace('add to ', '').trim();
+
+        // Get current view config
+        const config = ViewerConfig.getConfig(viewName);
+        if (!config) {
+            this.showToast('Invalid view', 'error');
+            return;
+        }
+
+        // Prompt for filename
+        const filename = prompt('Enter filename (without extension):');
+        if (!filename || filename.trim() === '') {
+            return; // User cancelled or entered empty name
+        }
+
+        // Sanitize filename (remove special chars, replace spaces with hyphens)
+        const sanitized = filename.trim().replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-');
+        const filepath = `${config.directory}/${sanitized}.json`;
+
+        try {
+            // Check if file already exists
+            const existing = await LocalStorageManager.getFile(filepath);
+            if (existing) {
+                this.showToast('File already exists', 'error');
+                return;
+            }
+
+            // Create empty ProseMirror document
+            const emptyDoc = ProseMirrorSetup.createEmptyDoc();
+            const jsonContent = JSON.stringify(emptyDoc, null, 2);
+
+            // Save to local storage
+            await LocalStorageManager.saveFile(filepath, jsonContent, true);
+
+            // Reload the view
+            if (window.Viewer && Viewer.isView(viewName)) {
+                await Viewer.load(viewName);
+            }
+
+            this.showToast(`Created ${sanitized}.json`, 'success');
+            await this.updateSyncBadge();
+        } catch (error) {
+            console.error('Error creating file:', error);
+            this.showToast('Failed to create file', 'error');
         }
     }
 

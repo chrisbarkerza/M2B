@@ -1823,3 +1823,124 @@ body {
 .conflict-item-actions .btn {
     flex: 1;
 }
+
+/* === ProseMirror Editor Styles === */
+.prosemirror-container {
+    margin: 0;
+    padding: 12px;
+    background: var(--card-bg);
+}
+
+.ProseMirror {
+    outline: none;
+    min-height: 100px;
+    padding: 8px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.ProseMirror p {
+    margin: 0;
+}
+
+/* List styles */
+.ProseMirror > [data-list-kind] {
+    position: relative;
+    padding-left: 32px;
+    margin: 4px 0;
+}
+
+.ProseMirror [data-list-kind]::before {
+    position: absolute;
+    left: 4px;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Task list checkbox */
+.ProseMirror [data-list-kind="task"]::before {
+    content: '☐';
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--primary-color);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.ProseMirror [data-list-kind="task"][data-checked="true"]::before {
+    content: '☑';
+    color: var(--secondary-color);
+}
+
+.ProseMirror [data-list-kind="task"][data-checked="true"] {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Bullet list */
+.ProseMirror [data-list-kind="bullet"]::before {
+    content: '⦿';
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+/* Ordered list */
+.ProseMirror [data-list-kind="ordered"]::before {
+    content: attr(data-list-order) '.';
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+/* Toggle list */
+.ProseMirror [data-list-kind="toggle"]::before {
+    content: '▶';
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-light);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.ProseMirror [data-list-kind="toggle"][data-collapsed="false"]::before {
+    content: '▼';
+}
+
+/* Nested lists indentation */
+.ProseMirror [data-list-kind] [data-list-kind] {
+    margin-left: 24px;
+}
+
+/* Focus styles */
+.ProseMirror:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Placeholder */
+.ProseMirror p.is-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--text-light);
+    pointer-events: none;
+    position: absolute;
+}
+
+/* Selection */
+.ProseMirror ::selection {
+    background: rgba(74, 144, 226, 0.3);
+}
+
+/* Mobile touch target improvements */
+@media (max-width: 768px) {
+    .ProseMirror [data-list-kind]::before {
+        font-size: 20px;
+        left: 2px;
+    }
+
+    .ProseMirror > [data-list-kind] {
+        padding-left: 36px;
+        margin: 8px 0;
+    }
+}

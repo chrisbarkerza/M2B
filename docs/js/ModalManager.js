@@ -30,8 +30,8 @@ class ModalManager {
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
 
-            // Read tasks from ToDo.md
-            const todoContent = await api.getFile('md/ToDo/ToDo.md').catch(() => '');
+            // Read tasks from ToDo.json
+            const todoContent = await api.getFile('json/ToDo/ToDo.json').catch(() => '');
 
             // Parse Today and Soon tasks
             const todayTasks = [];
@@ -63,10 +63,10 @@ class ModalManager {
             });
 
             // Get active projects
-            const projectsDir = await api.request('/contents/md/Projects', 'GET', null, true);
+            const projectsDir = await api.request('/contents/json/Projects', 'GET', null, true);
             const activeProjects = (projectsDir || [])
-                .filter(item => item.type === 'file' && item.name.endsWith('.md'))
-                .map(item => item.name.replace('.md', '').replace(/-/g, ' '));
+                .filter(item => item.type === 'file' && item.name.endsWith('.json'))
+                .map(item => item.name.replace('.json', '').replace(/-/g, ' '));
 
             // Build digest HTML
             let html = `<div class="digest-content">`;
@@ -157,19 +157,19 @@ class ModalManager {
 
             // Search in simplified directories
             const searchPaths = [
-                'md/ToDo',
-                'md/Shopping',
-                'md/Projects',
-                'md/Notes',
-                'md/Ideas',
-                'md/People'
+                'json/ToDo',
+                'json/Shopping',
+                'json/Projects',
+                'json/Notes',
+                'json/Ideas',
+                'json/People'
             ];
 
             const fetchPromises = searchPaths.map(async path => {
                 const contents = await api.request(`/contents/${path}`, 'GET', null, true);
                 if (!contents) return [];
 
-                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.md'));
+                const files = contents.filter(item => item.type === 'file' && item.name.endsWith('.json'));
 
                 // Search file contents
                 const matchedFiles = await Promise.all(files.map(async file => {

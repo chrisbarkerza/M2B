@@ -33,6 +33,7 @@ __pycache__/
 
 # Node modules (if any JavaScript scripts added later)
 node_modules/
+docs/package-lock.json
 
 # Environment files
 .env

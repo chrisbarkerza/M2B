@@ -6,34 +6,34 @@
 class ViewerConfig {
     static config = {
         tasks: {
-            directory: 'md/ToDo',
+            directory: 'json/ToDo',
             contentId: 'tasksContent',
             emptyMessage: 'No files found'
         },
         projects: {
-            directory: 'md/Projects',
+            directory: 'json/Projects',
             contentId: 'projectsContent',
             emptyMessage: 'No files found. Use the + button to create new files.'
         },
         notes: {
-            directory: 'md/Notes',
+            directory: 'json/Notes',
             contentId: 'notesContent',
             emptyMessage: 'No files found. Use the + button to create new files.'
         },
         shopping: {
-            directory: 'md/Shopping',
+            directory: 'json/Shopping',
             contentId: 'shoppingContent',
             emptyMessage: 'No files found. Use the + button to create new files.'
         },
         ideas: {
-            directory: 'md/Ideas',
+            directory: 'json/Ideas',
             contentId: 'ideasContent',
-            emptyMessage: 'No files found. Add markdown files to get started.'
+            emptyMessage: 'No files found. Add JSON files to get started.'
         },
         people: {
-            directory: 'md/People',
+            directory: 'json/People',
             contentId: 'peopleContent',
-            emptyMessage: 'No files found. Add markdown files to get started.'
+            emptyMessage: 'No files found. Add JSON files to get started.'
         }
     };
 

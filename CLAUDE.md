@@ -7,20 +7,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 M2B (My Second Brain) is a privacy-first Progressive Web App (PWA) for personal knowledge management with AI-powered capture and classification. It uses a two-repository architecture:
 
 - **M2B** (this repo) - Public PWA application hosted on GitHub Pages
-- **M2B-Data** (private repo) - Personal markdown files (shopping lists, todos, projects, notes)
+- **M2B-Data** (private repo) - Personal JSON files with ProseMirror documents (shopping lists, todos, projects, notes)
 
 The PWA is a client-side only application that accesses private data through the GitHub API using a personal access token stored in the browser's localStorage.
+
+**Editor:** The app uses [ProseMirror](https://prosemirror.net/) with [prosemirror-flat-list](https://github.com/ocavue/prosemirror-flat-list) for task list editing. Data is stored as ProseMirror JSON documents in the `json/` directories of M2B-Data.
 
 ## Development Commands
 
 ### Local Development Server
 ```bash
 cd docs
-python3 -m http.server 8000
+npm run dev
+# Or: python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
 
-There are no build steps, tests, or compilation required. The app is pure HTML/CSS/JavaScript served directly from the `docs` folder.
+### Build ProseMirror Bundle (only needed when updating ProseMirror)
+```bash
+cd docs
+npm install  # First time only
+npm run build
+```
+
+The app serves static files from the `docs` folder. ProseMirror is bundled once and committed to git.
 
 ### GitHub Actions Workflow
 ```bash

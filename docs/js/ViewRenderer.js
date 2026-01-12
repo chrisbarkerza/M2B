@@ -1,11 +1,11 @@
 /**
- * ViewRenderer - Convert data to UI, manage DOM structure
- * Renders accordion-style views from parsed data
- * Dependencies: AppState, ViewerConfig, ChecklistParser
+ * ViewRenderer - Render ProseMirror editors in accordion view
+ * Renders accordion-style views with ProseMirror editors
+ * Dependencies: AppState, ViewerConfig, ProseMirrorSetup
  */
 class ViewRenderer {
     /**
-     * Render view data as accordion HTML
+     * Render view data as accordion with ProseMirror editors
      * @param {string} viewName - The view to render (tasks, projects, etc.)
      */
     static render(viewName) {
@@ -24,7 +24,9 @@ class ViewRenderer {
 
         data.files.forEach((file, fileIndex) => {
             const expandedClass = file.expanded ? 'expanded' : '';
-            const itemCount = file.items.filter(i => !i.checked).length;
+
+            // Count unchecked tasks from ProseMirror document
+            const itemCount = this.countUncheckedTasks(file.docJSON);
 
             html += `<div class="accordion-item ${expandedClass}" data-file-index="${fileIndex}">`;
             html += `<div class="accordion-header" onclick="ViewRenderer.toggleAccordion('${viewName}', ${fileIndex})">`;
@@ -33,32 +35,60 @@ class ViewRenderer {
             html += `<span style="margin-left: auto; font-size: 0.75rem; color: var(--text-light);">(${itemCount})</span>`;
             html += `</div>`;
             html += `<div class="accordion-content">`;
-            html += `<div class="checklist">`;
-
-            file.items.forEach((item, itemIndex) => {
-                if (!item.checked) {
-                    const highlightClass = item.highlight ? ` highlight-${item.highlight}` : '';
-                    const indentLevel = item.indent || 0;
-                    const indentStyle = `padding-left: ${indentLevel * 20}px;`;
-                    html += `
-                        <div class="checklist-item${highlightClass}" data-view="${viewName}" data-file-index="${fileIndex}" data-item-index="${itemIndex}" style="${indentStyle}" tabindex="0">
-                            <span class="bullet">⦿</span>
-                            <span class="checklist-text">${item.text}</span>
-                        </div>
-                    `;
-                }
-            });
-
-            html += `</div></div></div>`;
+            html += `<div class="prosemirror-container" data-view="${viewName}" data-file-index="${fileIndex}"></div>`;
+            html += `</div></div>`;
         });
 
         html += '</div>';
         content.innerHTML = html;
 
-        // Bind interactions via GestureHandler
-        if (window.GestureHandler) {
-            GestureHandler.bindInteractions(content);
+        // Create ProseMirror editors for expanded accordions
+        data.files.forEach((file, fileIndex) => {
+            if (file.expanded) {
+                this.createEditor(viewName, fileIndex);
+            }
+        });
+    }
+
+    /**
+     * Create ProseMirror editor for a file
+     * @param {string} viewName - The view name
+     * @param {number} fileIndex - Index of file
+     */
+    static createEditor(viewName, fileIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+        const container = document.querySelector(
+            `.accordion-item[data-file-index="${fileIndex}"] .prosemirror-container`
+        );
+
+        if (!container) return;
+
+        // Destroy existing editor if any
+        if (file.editorView) {
+            file.editorView.destroy();
         }
+
+        // Create new editor
+        file.editorView = ProseMirrorSetup.createEditor(
+            container,
+            file.docJSON,
+            (newDocJSON) => {
+                // Save changes to local storage when document changes
+                file.docJSON = newDocJSON;
+                Viewer.updateSourceFile(
+                    file.path,
+                    newDocJSON,
+                    'Update file',
+                    'Changes saved locally'
+                );
+
+                // Update item count in header
+                this.updateItemCount(viewName, fileIndex);
+            }
+        );
     }
 
     /**
@@ -69,17 +99,62 @@ class ViewRenderer {
     static toggleAccordion(viewName, fileIndex) {
         const data = AppState.data[viewName];
         if (!data || !data.files || !data.files[fileIndex]) return;
-        data.files[fileIndex].expanded = !data.files[fileIndex].expanded;
+
+        const file = data.files[fileIndex];
+        file.expanded = !file.expanded;
+
+        // Destroy editor if collapsing
+        if (!file.expanded && file.editorView) {
+            file.editorView.destroy();
+            file.editorView = null;
+        }
+
         this.render(viewName);
     }
 
     /**
-     * Get unchecked items from a file
-     * @param {object} file - File object with items array
-     * @returns {Array} Array of unchecked items
+     * Count unchecked tasks in ProseMirror document
+     * @param {Object} docJSON - ProseMirror document JSON
+     * @returns {number} Count of unchecked tasks
      */
-    static getUncheckedItems(file) {
-        return file.items.filter(item => !item.checked);
+    static countUncheckedTasks(docJSON) {
+        let count = 0;
+
+        function traverse(node) {
+            if (node.type === 'list' &&
+                node.attrs &&
+                node.attrs.kind === 'task' &&
+                node.attrs.checked === false) {
+                count++;
+            }
+            if (node.content) {
+                node.content.forEach(traverse);
+            }
+        }
+
+        traverse(docJSON);
+        return count;
+    }
+
+    /**
+     * Update item count in accordion header
+     * @param {string} viewName - The view name
+     * @param {number} fileIndex - Index of file
+     */
+    static updateItemCount(viewName, fileIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+        const itemCount = this.countUncheckedTasks(file.docJSON);
+
+        const header = document.querySelector(
+            `.accordion-item[data-file-index="${fileIndex}"] .accordion-header span:last-child`
+        );
+
+        if (header) {
+            header.textContent = `(${itemCount})`;
+        }
     }
 }
 
