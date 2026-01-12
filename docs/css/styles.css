@@ -436,6 +436,8 @@ body {
     transition: background 0.2s;
     user-select: none;
     touch-action: pan-y;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .checklist-item:hover {
@@ -458,6 +460,20 @@ body {
     cursor: pointer;
     flex-shrink: 0;
     pointer-events: none;
+}
+
+.checklist-item .bullet {
+    font-size: 1.1rem;
+    color: var(--text-color);
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+    user-select: none;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -3px;
 }
 
 .checklist-text {
@@ -605,17 +621,74 @@ body {
     z-index: 1000;
     background: white;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    padding: 6px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-width: 140px;
+    gap: 6px;
+    min-width: 200px;
 }
 
 .highlight-menu.hidden {
     display: none;
+}
+
+.color-row {
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+}
+
+.color-square {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.color-square:hover {
+    transform: scale(1.1);
+    border-color: var(--primary-color);
+}
+
+.color-square.active {
+    border-color: var(--primary-color);
+    border-width: 3px;
+}
+
+.color-square .highlight-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+}
+
+.menu-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: var(--bg-color);
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.menu-action-btn:hover,
+.menu-action-btn:active {
+    background: var(--primary-color);
+    color: white;
 }
 
 .highlight-menu-btn {
