@@ -219,6 +219,16 @@ class QueueManager {
 // UI Controller
 class UI {
     static init() {
+        // Display mode detection for debugging PWA standalone mode
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        console.log('PWA Display mode:', isStandalone ? 'standalone' : 'browser');
+        if (!isStandalone) {
+            console.warn('⚠️ PWA is not running in standalone mode. Address bar may be visible.');
+            console.log('💡 To fix: Remove PWA from home screen, clear cache, and reinstall.');
+        } else {
+            console.log('✅ PWA running in standalone mode - address bar should be hidden');
+        }
+
         this.setupNavigation();
         this.setupCapture();
         this.setupSettings();
