@@ -423,6 +423,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0;
+    position: relative;
 }
 
 .checklist-item {
@@ -434,6 +435,7 @@ body {
     cursor: pointer;
     transition: background 0.2s;
     user-select: none;
+    touch-action: pan-y;
 }
 
 .checklist-item:hover {
@@ -455,12 +457,60 @@ body {
     height: 16px;
     cursor: pointer;
     flex-shrink: 0;
+    pointer-events: none;
 }
 
 .checklist-text {
     flex: 1;
     font-size: 0.85rem;
     line-height: 1.2;
+}
+
+.checklist-item.editing {
+    background: var(--bg-color);
+}
+
+.checklist-edit {
+    flex: 1;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    padding: 2px 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-color);
+    background: white;
+}
+
+.drag-divider {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.checklist-item.highlight-yellow {
+    background: #fff6c2;
+}
+
+.checklist-item.highlight-green {
+    background: #d8f5d0;
+}
+
+.checklist-item.highlight-blue {
+    background: #d8ebff;
+}
+
+.checklist-item.highlight-pink {
+    background: #ffd9ec;
+}
+
+.checklist-item.dragging {
+    opacity: 0.6;
+    background: var(--bg-color);
+    cursor: grabbing;
 }
 
 .due-date {
@@ -548,6 +598,75 @@ body {
 .icon-btn-small:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+.highlight-menu {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+
+.highlight-menu.hidden {
+    display: none;
+}
+
+.highlight-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.highlight-menu-btn:hover,
+.highlight-menu-btn:active {
+    background: var(--bg-color);
+}
+
+.highlight-menu-btn.active {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.highlight-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    display: inline-block;
+}
+
+.highlight-swatch.highlight-none {
+    background: white;
+}
+
+.highlight-swatch.highlight-yellow {
+    background: #ffe58f;
+}
+
+.highlight-swatch.highlight-green {
+    background: #b7f5a0;
+}
+
+.highlight-swatch.highlight-blue {
+    background: #a9d2ff;
+}
+
+.highlight-swatch.highlight-pink {
+    background: #ffb3d9;
 }
 
 /* === Buttons === */
@@ -876,6 +995,18 @@ body {
 .modal-header h2 {
     font-size: 1.5rem;
     margin: 0;
+}
+
+.modal-header.modal-header--app {
+    background: var(--primary-color);
+    color: white;
+    padding: 0 var(--spacing);
+    height: var(--header-height);
+    border-bottom: none;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .close-btn {
