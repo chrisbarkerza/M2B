@@ -341,7 +341,8 @@ class SyncManager {
     static async performMigration() {
         try {
             const hasData = await LocalStorageManager.hasData();
-            console.log('Migration check: hasData =', hasData);
+            const migrated = localStorage.getItem('migrated_to_local_first');
+            console.log('Migration check: hasData =', hasData, 'migrated =', migrated);
 
             if (!hasData) {
                 console.log('First run with local-first storage - loading from GitHub...');
@@ -361,17 +362,17 @@ class SyncManager {
                 console.log(`Migration complete: loaded ${fileCount} files`);
 
                 if (fileCount === 0) {
-                    console.warn('No files were loaded from GitHub!');
+                    console.warn('No files were loaded from GitHub! This might indicate missing directories.');
                     if (window.UI && UI.showToast) {
-                        UI.showToast('No files found in GitHub repository', 'warning');
+                        UI.showToast('No files found. Check GitHub repo and reload.', 'warning');
                     }
+                    // Don't mark as migrated if no files loaded
                 } else {
                     if (window.UI && UI.showToast) {
                         UI.showToast(`Loaded ${fileCount} files`, 'success');
                     }
+                    localStorage.setItem('migrated_to_local_first', 'true');
                 }
-
-                localStorage.setItem('migrated_to_local_first', 'true');
             } else {
                 console.log('Local storage already has data, skipping migration');
             }

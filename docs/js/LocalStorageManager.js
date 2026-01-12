@@ -74,10 +74,9 @@ class LocalStorageManager {
      * @returns {Promise<void>}
      */
     static async saveFile(path, content, markDirty = true, githubSHA = null) {
-        const store = await this.getStore('readwrite');
         const now = Date.now();
 
-        // Get existing file record to preserve metadata
+        // Get existing file record to preserve metadata (before opening transaction)
         const existing = await this.getFile(path);
 
         const fileRecord = {
@@ -90,6 +89,8 @@ class LocalStorageManager {
             syncStatus: markDirty ? 'dirty' : (existing ? existing.syncStatus : 'synced')
         };
 
+        // Open transaction AFTER getting existing file
+        const store = await this.getStore('readwrite');
         return new Promise((resolve, reject) => {
             const request = store.put(fileRecord);
             request.onsuccess = () => resolve();
@@ -136,13 +137,13 @@ class LocalStorageManager {
      * @returns {Promise<Array>}
      */
     static async getDirtyFiles() {
-        const store = await this.getStore('readonly');
-        const index = store.index('isDirty');
-        return new Promise((resolve, reject) => {
-            const request = index.getAll(true); // Get all records where isDirty = true
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        try {
+            const allFiles = await this.getAllFiles();
+            return allFiles.filter(f => f.isDirty === true);
+        } catch (error) {
+            console.error('Error getting dirty files:', error);
+            return [];
+        }
     }
 
     /**
@@ -232,29 +233,29 @@ class LocalStorageManager {
      * @returns {Promise<void>}
      */
     static async bulkSave(filesArray) {
-        const store = await this.getStore('readwrite');
         const now = Date.now();
 
-        const promises = filesArray.map(({ path, content, markDirty = true, githubSHA = null }) => {
-            return new Promise(async (resolve, reject) => {
-                const existing = await this.getFile(path);
-                const fileRecord = {
-                    path,
-                    content,
-                    lastModified: now,
-                    isDirty: markDirty,
-                    githubSHA: githubSHA || (existing ? existing.githubSHA : null),
-                    lastSynced: existing ? existing.lastSynced : null,
-                    syncStatus: markDirty ? 'dirty' : (existing ? existing.syncStatus : 'synced')
-                };
+        // Process each file sequentially to avoid transaction timing issues
+        for (const { path, content, markDirty = true, githubSHA = null } of filesArray) {
+            const existing = await this.getFile(path);
+            const fileRecord = {
+                path,
+                content,
+                lastModified: now,
+                isDirty: markDirty,
+                githubSHA: githubSHA || (existing ? existing.githubSHA : null),
+                lastSynced: existing ? existing.lastSynced : null,
+                syncStatus: markDirty ? 'dirty' : (existing ? existing.syncStatus : 'synced')
+            };
 
+            // Each save gets its own transaction
+            const store = await this.getStore('readwrite');
+            await new Promise((resolve, reject) => {
                 const request = store.put(fileRecord);
                 request.onsuccess = () => resolve();
                 request.onerror = () => reject(request.error);
             });
-        });
-
-        return Promise.all(promises);
+        }
     }
 
     /**
