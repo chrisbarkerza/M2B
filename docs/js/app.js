@@ -17,7 +17,15 @@ const AppState = {
         ideas: null,
         people: null
     },
-    queue: []
+    queue: [],
+    syncStatus: {
+        dirty: 0,
+        conflicts: 0,
+        synced: 0,
+        total: 0,
+        lastSync: null,
+        inProgress: false
+    }
 };
 
 // GitHub API Helper
@@ -218,7 +226,7 @@ class QueueManager {
 
 // UI Controller
 class UI {
-    static init() {
+    static async init() {
         // Display mode detection for debugging PWA standalone mode
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
         console.log('PWA Display mode:', isStandalone ? 'standalone' : 'browser');
@@ -237,6 +245,15 @@ class UI {
         this.setupProjectTabs();
         this.setupMoreMenu();
         this.setupActionButtons();
+
+        // Initialize local storage and perform migration
+        if (AppState.token) {
+            await SyncManager.performMigration();
+            await this.updateSyncBadge();
+
+            // Background sync (non-blocking)
+            SyncManager.backgroundSync();
+        }
 
         // Load data if token exists
         if (AppState.token) {
@@ -615,13 +632,132 @@ class UI {
                 this.showToast('Cache cleared', 'success');
             }
         });
+
+        // Local storage management buttons
+        const clearLocalStorageBtn = document.getElementById('clearLocalStorageBtn');
+        if (clearLocalStorageBtn) {
+            clearLocalStorageBtn.addEventListener('click', async () => {
+                if (confirm('WARNING: This will delete ALL local files. Make sure everything is synced to GitHub first. Continue?')) {
+                    try {
+                        await LocalStorageManager.clearAll();
+                        this.showToast('Local storage cleared', 'success');
+                        await this.updateSyncBadge();
+                        this.updateStorageStatus();
+                    } catch (error) {
+                        this.showToast('Failed to clear storage: ' + error.message, 'error');
+                    }
+                }
+            });
+        }
+
+        const forceResyncBtn = document.getElementById('forceResyncBtn');
+        if (forceResyncBtn) {
+            forceResyncBtn.addEventListener('click', async () => {
+                if (confirm('This will re-download all files from GitHub, overwriting any local changes. Continue?')) {
+                    try {
+                        forceResyncBtn.disabled = true;
+                        forceResyncBtn.textContent = 'Syncing...';
+
+                        await LocalStorageManager.clearAll();
+                        await SyncManager.loadAllFromGitHub();
+
+                        this.showToast('Re-sync complete', 'success');
+                        await this.updateSyncBadge();
+                        this.updateStorageStatus();
+
+                        // Reload current view
+                        if (window.Viewer && Viewer.isView(AppState.currentView)) {
+                            await Viewer.load(AppState.currentView);
+                        }
+                    } catch (error) {
+                        this.showToast('Re-sync failed: ' + error.message, 'error');
+                    } finally {
+                        forceResyncBtn.disabled = false;
+                        forceResyncBtn.textContent = 'Force Re-sync from GitHub';
+                    }
+                }
+            });
+        }
+
+        const exportDataBtn = document.getElementById('exportDataBtn');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', async () => {
+                try {
+                    const jsonData = await LocalStorageManager.exportData();
+                    const blob = new Blob([jsonData], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `m2b-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('Data exported successfully', 'success');
+                } catch (error) {
+                    this.showToast('Export failed: ' + error.message, 'error');
+                }
+            });
+        }
+
+        const importDataBtn = document.getElementById('importDataBtn');
+        const importDataFile = document.getElementById('importDataFile');
+        if (importDataBtn && importDataFile) {
+            importDataBtn.addEventListener('click', () => {
+                importDataFile.click();
+            });
+
+            importDataFile.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        try {
+                            const jsonData = event.target.result;
+                            await LocalStorageManager.importData(jsonData);
+                            this.showToast('Data imported successfully', 'success');
+                            await this.updateSyncBadge();
+                            this.updateStorageStatus();
+
+                            // Reload current view
+                            if (window.Viewer && Viewer.isView(AppState.currentView)) {
+                                await Viewer.load(AppState.currentView);
+                            }
+                        } catch (error) {
+                            this.showToast('Import failed: ' + error.message, 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                } catch (error) {
+                    this.showToast('Failed to read file: ' + error.message, 'error');
+                }
+
+                // Reset file input
+                importDataFile.value = '';
+            });
+        }
     }
 
     static showSettings() {
         document.getElementById('githubToken').value = AppState.token;
         document.getElementById('githubRepo').value = AppState.repo;
         this.updateSyncStatus();
+        this.updateStorageStatus();
         document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    static async updateStorageStatus() {
+        const storageStatusEl = document.getElementById('storageStatus');
+        if (!storageStatusEl) return;
+
+        try {
+            const counts = await LocalStorageManager.getStatusCounts();
+            storageStatusEl.textContent = `${counts.total} files (${counts.dirty} pending sync, ${counts.conflicts} conflicts)`;
+        } catch (error) {
+            storageStatusEl.textContent = 'Error loading status';
+        }
     }
 
     static updateSyncStatus() {
@@ -1215,20 +1351,23 @@ class UI {
         syncBtn.classList.add('syncing');
 
         try {
+            // Process offline queue for captures only
             await QueueManager.processQueue();
-            // Clear cached data to force reload
-            ['tasks', 'projects', 'notes', 'shopping', 'ideas', 'people'].forEach(view => {
-                AppState.data[view] = null;
-            });
 
-            // Reload current view
-            if (window.Viewer && Viewer.isView(AppState.currentView)) {
-                await Viewer.load(AppState.currentView);
+            // Sync dirty files using SyncManager
+            const result = await SyncManager.syncAll();
+
+            // Update sync badge
+            await this.updateSyncBadge();
+
+            // Reload current view if files were synced
+            if (result.synced > 0 || result.conflicts > 0) {
+                if (window.Viewer && Viewer.isView(AppState.currentView)) {
+                    await Viewer.load(AppState.currentView);
+                }
             }
 
-            localStorage.setItem('last_sync', new Date().toISOString());
             this.updateSyncStatus();
-            this.showToast('Synced', 'success');
         } catch (error) {
             this.showToast('Sync failed: ' + error.message, 'error');
         } finally {
@@ -1419,6 +1558,127 @@ class UI {
 
         // Scroll result into view smoothly
         resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    static async showConflictModal(conflicts) {
+        const modal = document.getElementById('conflictModal');
+        const conflictList = document.getElementById('conflictList');
+
+        if (!conflicts || conflicts.length === 0) {
+            return;
+        }
+
+        let html = '';
+        conflicts.forEach((conflict, index) => {
+            const fileName = conflict.path.split('/').pop();
+            const localDate = conflict.localModified ? new Date(conflict.localModified).toLocaleString() : 'Unknown';
+
+            html += `
+                <div class="conflict-item" data-conflict-index="${index}">
+                    <div class="conflict-item-header">
+                        <svg class="icon conflict-icon" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+                            <path d="M12 9v4" />
+                            <path d="M12 17h.01" />
+                        </svg>
+                        <span>${fileName}</span>
+                    </div>
+                    <div class="conflict-item-details">
+                        <div><strong>File:</strong> ${conflict.path}</div>
+                        <div><strong>Local last modified:</strong> ${localDate}</div>
+                        <div><strong>Status:</strong> Both local and remote versions have changed</div>
+                    </div>
+                    <div class="conflict-item-actions">
+                        <button class="btn btn-secondary" onclick="UI.resolveConflictChoice('${conflict.path}', 'use-remote', ${index})">
+                            Use Remote
+                        </button>
+                        <button class="btn btn-primary" onclick="UI.resolveConflictChoice('${conflict.path}', 'keep-local', ${index})">
+                            Keep Local
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        conflictList.innerHTML = html;
+        modal.classList.remove('hidden');
+    }
+
+    static closeConflictModal() {
+        const modal = document.getElementById('conflictModal');
+        modal.classList.add('hidden');
+    }
+
+    static async resolveConflictChoice(path, resolution, conflictIndex) {
+        try {
+            // Show loading state
+            const conflictItem = document.querySelector(`[data-conflict-index="${conflictIndex}"]`);
+            if (conflictItem) {
+                conflictItem.style.opacity = '0.5';
+                conflictItem.style.pointerEvents = 'none';
+            }
+
+            // Resolve the conflict
+            await SyncManager.resolveConflict(path, resolution);
+
+            // Remove from UI
+            if (conflictItem) {
+                conflictItem.remove();
+            }
+
+            // Check if all conflicts are resolved
+            const remainingConflicts = document.querySelectorAll('.conflict-item');
+            if (remainingConflicts.length === 0) {
+                this.closeConflictModal();
+                this.showToast('All conflicts resolved!', 'success');
+            }
+
+            // Update sync badge
+            await this.updateSyncBadge();
+
+            // Reload current view
+            if (window.Viewer && Viewer.isView(AppState.currentView)) {
+                await Viewer.load(AppState.currentView);
+            }
+        } catch (error) {
+            this.showToast('Failed to resolve conflict: ' + error.message, 'error');
+
+            // Restore UI state
+            const conflictItem = document.querySelector(`[data-conflict-index="${conflictIndex}"]`);
+            if (conflictItem) {
+                conflictItem.style.opacity = '1';
+                conflictItem.style.pointerEvents = 'auto';
+            }
+        }
+    }
+
+    static async updateSyncBadge() {
+        const badge = document.getElementById('syncBadge');
+        if (!badge) return;
+
+        try {
+            const status = await SyncManager.getSyncStatus();
+            const count = status.dirty + status.conflicts;
+
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+
+                if (status.conflicts > 0) {
+                    badge.classList.add('has-conflicts');
+                } else {
+                    badge.classList.remove('has-conflicts');
+                }
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('has-conflicts');
+            }
+
+            // Update AppState
+            AppState.syncStatus = status;
+        } catch (error) {
+            console.error('Error updating sync badge:', error);
+        }
     }
 
     static showToast(message, type = 'info') {

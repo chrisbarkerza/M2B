@@ -51,18 +51,26 @@ const Viewer = {
         content.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            const contents = await api.request(`/contents/${config.directory}`, 'GET', null, true);
+            // Try to load from local storage first
+            const localFiles = await LocalStorageManager.getAllFiles(config.directory);
 
-            if (!contents) {
-                content.innerHTML = `<div class="empty-state">${config.emptyMessage}</div>`;
-                return;
+            if (localFiles.length === 0) {
+                // First load: fetch from GitHub
+                console.log(`No local files for ${viewName}, loading from GitHub...`);
+                await SyncManager.loadAllFromGitHub(viewName);
+
+                // Try again after loading from GitHub
+                const refreshedFiles = await LocalStorageManager.getAllFiles(config.directory);
+                if (refreshedFiles.length === 0) {
+                    content.innerHTML = `<div class="empty-state">${config.emptyMessage}</div>`;
+                    return;
+                }
+                localFiles.push(...refreshedFiles);
             }
 
-            const files = contents.filter(item =>
-                item.type === 'file' &&
-                item.name.endsWith('.md') &&
-                item.name !== 'Done.md'
+            // Filter out Done.md
+            const files = localFiles.filter(f =>
+                !f.path.endsWith('Done.md')
             );
 
             if (files.length === 0) {
@@ -70,25 +78,18 @@ const Viewer = {
                 return;
             }
 
-            const filesData = await Promise.all(files.map(async file => {
-                try {
-                    const fileContent = await api.getFile(file.path);
-                    const items = this.parseCheckboxItems(fileContent);
-                    return {
-                        name: file.name.replace('.md', ''),
-                        path: file.path,
-                        items: items,
-                        expanded: false
-                    };
-                } catch (error) {
-                    console.error(`Error loading ${file.name}:`, error);
-                    return null;
-                }
-            }));
+            // Parse files from local storage
+            const filesData = files.map(file => {
+                const items = this.parseCheckboxItems(file.content);
+                return {
+                    name: file.path.split('/').pop().replace('.md', ''),
+                    path: file.path,
+                    items: items,
+                    expanded: false
+                };
+            });
 
-            const validFiles = filesData.filter(f => f !== null);
-
-            AppState.data[viewName] = { directory: config.directory, files: validFiles };
+            AppState.data[viewName] = { directory: config.directory, files: filesData };
             this.render(viewName);
         } catch (error) {
             content.innerHTML = `<div class="error">Error loading: ${error.message}</div>`;
@@ -201,42 +202,37 @@ const Viewer = {
 
     async moveItemToDone(viewName, directory, file, item, itemIndex) {
         const today = new Date().toISOString().split('T')[0];
-        const api = new GitHubAPI(AppState.token, AppState.repo);
 
         try {
             let doneContent = '';
             const donePath = `${directory}/Done.md`;
-            try {
-                doneContent = await api.getFile(donePath);
-            } catch (error) {
+
+            // Try to get from local storage first
+            const doneFile = await LocalStorageManager.getFile(donePath);
+            if (doneFile) {
+                doneContent = doneFile.content;
+            } else {
                 doneContent = `# ${directory.split('/').pop()} - Completed\n\n<!-- Checked items moved here with completion dates -->\n\n`;
             }
 
             doneContent += `- [x] [${file.name}] ${item.text} _(${today})_\n`;
 
-            const sourceContent = await api.getFile(file.path);
+            // Get source content from local storage
+            const sourceFile = await LocalStorageManager.getFile(file.path);
+            const sourceContent = sourceFile ? sourceFile.content : '';
             const newSourceContent = this.removeCheckboxLineByIndex(sourceContent, itemIndex);
 
-            if (AppState.isOnline) {
-                await api.updateFile(donePath, doneContent, `Archive: ${item.text}`);
-                await api.updateFile(file.path, newSourceContent, `Remove completed: ${item.text}`);
-                if (window.UI && UI.showToast) {
-                    UI.showToast('Moved to Done', 'success');
-                }
-            } else {
-                await QueueManager.enqueue({
-                    type: 'update_file',
-                    data: { path: donePath, content: doneContent, message: 'Archive item (offline)' },
-                    description: 'Archive update'
-                });
-                await QueueManager.enqueue({
-                    type: 'update_file',
-                    data: { path: file.path, content: newSourceContent, message: 'Remove item (offline)' },
-                    description: 'File update'
-                });
-                if (window.UI && UI.showToast) {
-                    UI.showToast('Queued for sync', 'info');
-                }
+            // Save both files to local storage
+            await LocalStorageManager.saveFile(donePath, doneContent, true);
+            await LocalStorageManager.saveFile(file.path, newSourceContent, true);
+
+            if (window.UI && UI.showToast) {
+                UI.showToast('Moved to Done', 'success');
+            }
+
+            // Update sync badge
+            if (window.UI && UI.updateSyncBadge) {
+                UI.updateSyncBadge();
             }
 
             file.items = this.parseCheckboxItems(newSourceContent);
@@ -290,21 +286,17 @@ const Viewer = {
     },
 
     async updateSourceFile(path, content, message, toastMessage) {
-        const api = new GitHubAPI(AppState.token, AppState.repo);
-        if (AppState.isOnline) {
-            await api.updateFile(path, content, message);
-            if (toastMessage && window.UI && UI.showToast) {
-                UI.showToast(toastMessage, 'success');
-            }
-        } else {
-            await QueueManager.enqueue({
-                type: 'update_file',
-                data: { path, content, message: `${message} (offline)` },
-                description: message
-            });
-            if (toastMessage && window.UI && UI.showToast) {
-                UI.showToast('Queued for sync', 'info');
-            }
+        // Save to local storage immediately (local-first)
+        await LocalStorageManager.saveFile(path, content, true);
+
+        // Show instant feedback
+        if (toastMessage && window.UI && UI.showToast) {
+            UI.showToast('Saved locally', 'success');
+        }
+
+        // Update sync badge
+        if (window.UI && UI.updateSyncBadge) {
+            UI.updateSyncBadge();
         }
     },
 
@@ -493,8 +485,10 @@ const Viewer = {
         if (!item) return;
 
         try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            const sourceContent = await api.getFile(file.path);
+            // Get content from local storage
+            const localFile = await LocalStorageManager.getFile(file.path);
+            const sourceContent = localFile ? localFile.content : '';
+
             const updatedItem = { ...item, text: newText };
             const newLine = this.formatItemLine(updatedItem);
             const newSourceContent = this.updateCheckboxLineByIndex(sourceContent, itemIndex, newLine);
@@ -592,8 +586,9 @@ const Viewer = {
         uncheckedItems.splice(toIndex, 0, moved);
 
         try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            const sourceContent = await api.getFile(file.path);
+            // Get content from local storage
+            const localFile = await LocalStorageManager.getFile(file.path);
+            const sourceContent = localFile ? localFile.content : '';
             const newSourceContent = this.reorderUncheckedLines(sourceContent, uncheckedItems);
 
             await this.updateSourceFile(file.path, newSourceContent, `Reorder items in ${file.name}`, 'Reordered');
@@ -696,8 +691,10 @@ const Viewer = {
         const updatedItem = { ...item, highlight };
 
         try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            const sourceContent = await api.getFile(file.path);
+            // Get content from local storage
+            const localFile = await LocalStorageManager.getFile(file.path);
+            const sourceContent = localFile ? localFile.content : '';
+
             const newLine = this.formatItemLine(updatedItem);
             const newSourceContent = this.updateCheckboxLineByIndex(sourceContent, itemIndex, newLine);
 
