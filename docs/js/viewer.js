@@ -170,7 +170,7 @@ const Viewer = {
                     const indentLevel = item.indent || 0;
                     const indentStyle = `padding-left: ${indentLevel * 20}px;`;
                     html += `
-                        <div class="checklist-item${highlightClass}" data-view="${viewName}" data-file-index="${fileIndex}" data-item-index="${itemIndex}" style="${indentStyle}">
+                        <div class="checklist-item${highlightClass}" data-view="${viewName}" data-file-index="${fileIndex}" data-item-index="${itemIndex}" style="${indentStyle}" tabindex="0">
                             <span class="bullet">⦿</span>
                             <span class="checklist-text">${item.text}</span>
                         </div>
@@ -328,6 +328,106 @@ const Viewer = {
                 event.preventDefault();
             }
         });
+
+        // Add keyboard shortcuts for item manipulation
+        content.addEventListener('keydown', this.handleKeyDown.bind(this));
+    },
+
+    handleKeyDown(event) {
+        // Check for Cmd+Shift+Arrow (Mac) or Ctrl+Shift+Arrow (Windows/Linux)
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const modifierKey = isMac ? event.metaKey : event.ctrlKey;
+
+        if (!modifierKey || !event.shiftKey) return;
+
+        // Find the currently focused or editing item
+        const editingItem = event.target.closest('.checklist-item');
+        if (!editingItem) return;
+
+        const viewName = editingItem.dataset.view;
+        const fileIndex = parseInt(editingItem.dataset.fileIndex, 10);
+        const itemIndex = parseInt(editingItem.dataset.itemIndex, 10);
+
+        if (!this.isGestureTargetValid(viewName, fileIndex, itemIndex)) return;
+
+        const data = AppState.data[viewName];
+        const file = data.files[fileIndex];
+        const uncheckedItems = file.items.filter(item => !item.checked);
+
+        switch (event.key) {
+            case 'ArrowLeft':
+                event.preventDefault();
+                this.outdentItem(viewName, fileIndex, itemIndex);
+                break;
+
+            case 'ArrowRight':
+                event.preventDefault();
+                this.indentItem(viewName, fileIndex, itemIndex);
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                // Move item up (swap with previous item)
+                const prevIndex = this.findPreviousItemIndex(uncheckedItems, itemIndex);
+                if (prevIndex !== null) {
+                    this.reorderItems(viewName, fileIndex, itemIndex, prevIndex);
+                }
+                break;
+
+            case 'ArrowDown':
+                event.preventDefault();
+                // Move item down (swap with next item)
+                const nextIndex = this.findNextItemIndex(uncheckedItems, itemIndex);
+                if (nextIndex !== null) {
+                    this.reorderItems(viewName, fileIndex, itemIndex, nextIndex);
+                }
+                break;
+        }
+    },
+
+    findPreviousItemIndex(uncheckedItems, currentIndex) {
+        // Find the index of the item before the current one (skipping children)
+        if (currentIndex === 0) return null;
+
+        // Get the group being moved (parent + children)
+        const indicesToMove = this.getItemWithChildren(uncheckedItems, currentIndex);
+        const firstIndexInGroup = indicesToMove[0];
+
+        if (firstIndexInGroup === 0) return null;
+
+        // Find the start of the previous group
+        const prevItemIndex = firstIndexInGroup - 1;
+
+        // Find the start of the previous group by walking backwards
+        let targetIndex = prevItemIndex;
+        for (let i = prevItemIndex - 1; i >= 0; i--) {
+            const itemIndent = uncheckedItems[i].indent || 0;
+            const prevIndent = uncheckedItems[i + 1].indent || 0;
+            if (itemIndent <= prevIndent && i + 1 !== prevItemIndex) {
+                break;
+            }
+            targetIndex = i;
+        }
+
+        return targetIndex;
+    },
+
+    findNextItemIndex(uncheckedItems, currentIndex) {
+        // Find the index after the current item's group (skipping children)
+        const indicesToMove = this.getItemWithChildren(uncheckedItems, currentIndex);
+        const lastIndexInGroup = indicesToMove[indicesToMove.length - 1];
+
+        if (lastIndexInGroup >= uncheckedItems.length - 1) return null;
+
+        // The next position is right after this group
+        const nextItemIndex = lastIndexInGroup + 1;
+
+        // Find the end of the next group
+        const nextGroupIndices = this.getItemWithChildren(uncheckedItems, nextItemIndex);
+        const nextGroupEnd = nextGroupIndices[nextGroupIndices.length - 1];
+
+        // We want to move to the position after the next group
+        return nextGroupEnd + 1;
     },
 
     handlePointerDown(event) {
@@ -431,7 +531,15 @@ const Viewer = {
         }
 
         if (!state.swipeTriggered) {
-            this.startInlineEdit(state.itemEl, state.viewName, state.fileIndex, state.itemIndex);
+            // Check if the click was on the bullet
+            const clickedBullet = event.target.closest('.bullet');
+            if (clickedBullet) {
+                // Just focus the item without starting edit
+                state.itemEl.focus();
+            } else {
+                // Click on text - start inline edit
+                this.startInlineEdit(state.itemEl, state.viewName, state.fileIndex, state.itemIndex);
+            }
         }
 
         this.resetGestureState();
@@ -459,6 +567,27 @@ const Viewer = {
         const data = AppState.data[viewName];
         if (!data || !data.files || !data.files[fileIndex]) return false;
         return Boolean(data.files[fileIndex].items[itemIndex]);
+    },
+
+    getItemChildren(fileItems, parentIndex) {
+        const parent = fileItems[parentIndex];
+        if (!parent) return [];
+
+        const parentIndent = parent.indent || 0;
+        const children = [];
+
+        // Find all consecutive items with greater indent than parent
+        for (let i = parentIndex + 1; i < fileItems.length; i++) {
+            const itemIndent = fileItems[i].indent || 0;
+            if (itemIndent <= parentIndent) break; // No longer a child
+            children.push(i);
+        }
+
+        return children;
+    },
+
+    getItemWithChildren(fileItems, parentIndex) {
+        return [parentIndex, ...this.getItemChildren(fileItems, parentIndex)];
     },
 
     startInlineEdit(itemEl, viewName, fileIndex, itemIndex) {
@@ -638,11 +767,21 @@ const Viewer = {
             const localFile = await LocalStorageManager.getFile(file.path);
             const sourceContent = localFile ? localFile.content : '';
 
-            const updatedItem = { ...item, indent: currentIndent + 1 };
-            const newLine = this.formatItemLine(updatedItem);
-            const newSourceContent = this.updateCheckboxLineByIndex(sourceContent, itemIndex, newLine);
+            // Get all items that need to be indented (parent + children)
+            const itemsToIndent = this.getItemWithChildren(file.items, itemIndex);
 
-            await this.updateSourceFile(file.path, newSourceContent, 'Indent item', 'Item indented');
+            // Update content by indenting all items
+            let newSourceContent = sourceContent;
+            for (const idx of itemsToIndent) {
+                const itemToUpdate = file.items[idx];
+                const updatedItem = { ...itemToUpdate, indent: Math.min(4, (itemToUpdate.indent || 0) + 1) };
+                const newLine = this.formatItemLine(updatedItem);
+                newSourceContent = this.updateCheckboxLineByIndex(newSourceContent, idx, newLine);
+            }
+
+            const itemCount = itemsToIndent.length;
+            const message = itemCount > 1 ? `Indented ${itemCount} items` : 'Item indented';
+            await this.updateSourceFile(file.path, newSourceContent, 'Indent item', message);
             file.items = this.parseCheckboxItems(newSourceContent);
             this.render(viewName);
         } catch (error) {
@@ -672,11 +811,21 @@ const Viewer = {
             const localFile = await LocalStorageManager.getFile(file.path);
             const sourceContent = localFile ? localFile.content : '';
 
-            const updatedItem = { ...item, indent: (item.indent || 0) - 1 };
-            const newLine = this.formatItemLine(updatedItem);
-            const newSourceContent = this.updateCheckboxLineByIndex(sourceContent, itemIndex, newLine);
+            // Get all items that need to be outdented (parent + children)
+            const itemsToOutdent = this.getItemWithChildren(file.items, itemIndex);
 
-            await this.updateSourceFile(file.path, newSourceContent, 'Outdent item', 'Item outdented');
+            // Update content by outdenting all items
+            let newSourceContent = sourceContent;
+            for (const idx of itemsToOutdent) {
+                const itemToUpdate = file.items[idx];
+                const updatedItem = { ...itemToUpdate, indent: Math.max(0, (itemToUpdate.indent || 0) - 1) };
+                const newLine = this.formatItemLine(updatedItem);
+                newSourceContent = this.updateCheckboxLineByIndex(newSourceContent, idx, newLine);
+            }
+
+            const itemCount = itemsToOutdent.length;
+            const message = itemCount > 1 ? `Outdented ${itemCount} items` : 'Item outdented';
+            await this.updateSourceFile(file.path, newSourceContent, 'Outdent item', message);
             file.items = this.parseCheckboxItems(newSourceContent);
             this.render(viewName);
         } catch (error) {
@@ -690,6 +839,24 @@ const Viewer = {
     startDrag(state) {
         state.dragging = true;
         state.itemEl.classList.add('dragging');
+
+        // Highlight all items that will be moved (parent + children)
+        const data = AppState.data[state.viewName];
+        const file = data.files[state.fileIndex];
+        const uncheckedItems = file.items.filter(item => !item.checked);
+        const indicesToMove = this.getItemWithChildren(uncheckedItems, state.itemIndex);
+
+        // Store the child elements to highlight them
+        state.draggedItemElements = [];
+        const content = document.getElementById(this.config[state.viewName].contentId);
+        for (const idx of indicesToMove) {
+            const itemEl = content.querySelector(`.checklist-item[data-item-index="${idx}"]`);
+            if (itemEl) {
+                itemEl.classList.add('dragging');
+                state.draggedItemElements.push(itemEl);
+            }
+        }
+
         state.dragDivider = document.createElement('div');
         state.dragDivider.className = 'drag-divider';
         state.listEl.appendChild(state.dragDivider);
@@ -794,6 +961,13 @@ const Viewer = {
         if (state.itemEl) {
             state.itemEl.classList.remove('dragging');
         }
+        // Remove dragging class from all highlighted items
+        if (state.draggedItemElements) {
+            for (const el of state.draggedItemElements) {
+                el.classList.remove('dragging');
+            }
+            state.draggedItemElements = null;
+        }
         if (state.dragDivider && state.dragDivider.parentNode) {
             state.dragDivider.parentNode.removeChild(state.dragDivider);
         }
@@ -812,8 +986,28 @@ const Viewer = {
             return;
         }
 
-        const [moved] = uncheckedItems.splice(fromIndex, 1);
-        uncheckedItems.splice(toIndex, 0, moved);
+        // Get the indices of items being moved (parent + children)
+        const indicesToMove = this.getItemWithChildren(uncheckedItems, fromIndex);
+
+        // Extract the actual items to move
+        const movedItems = indicesToMove.map(idx => uncheckedItems[idx]);
+
+        // Remove items from their original positions (in reverse order to maintain indices)
+        const sortedIndices = [...indicesToMove].sort((a, b) => b - a);
+        for (const idx of sortedIndices) {
+            uncheckedItems.splice(idx, 1);
+        }
+
+        // Calculate new insert position (adjust for removed items before toIndex)
+        let adjustedToIndex = toIndex;
+        for (const idx of indicesToMove) {
+            if (idx < toIndex) {
+                adjustedToIndex--;
+            }
+        }
+
+        // Insert all items at the new position
+        uncheckedItems.splice(adjustedToIndex, 0, ...movedItems);
 
         try {
             // Get content from local storage
@@ -821,9 +1015,20 @@ const Viewer = {
             const sourceContent = localFile ? localFile.content : '';
             const newSourceContent = this.reorderUncheckedLines(sourceContent, uncheckedItems);
 
-            await this.updateSourceFile(file.path, newSourceContent, `Reorder items in ${file.name}`, 'Reordered');
+            const itemCount = movedItems.length;
+            const message = itemCount > 1 ? `Reordered ${itemCount} items` : 'Reordered';
+            await this.updateSourceFile(file.path, newSourceContent, `Reorder items in ${file.name}`, message);
             file.items = this.parseCheckboxItems(newSourceContent);
             this.render(viewName);
+
+            // Restore focus to the moved item at its new position
+            setTimeout(() => {
+                const content = document.getElementById(this.config[viewName].contentId);
+                const newItemEl = content.querySelector(`.checklist-item[data-item-index="${adjustedToIndex}"]`);
+                if (newItemEl) {
+                    newItemEl.focus();
+                }
+            }, 50);
         } catch (error) {
             if (window.UI && UI.showToast) {
                 UI.showToast('Reorder failed: ' + error.message, 'error');
@@ -842,7 +1047,9 @@ const Viewer = {
         const uncheckedItems = fromFile.items.filter(item => !item.checked);
         if (itemIndex < 0 || itemIndex >= uncheckedItems.length) return;
 
-        const itemToMove = uncheckedItems[itemIndex];
+        // Get the item and its children
+        const indicesToMove = this.getItemWithChildren(uncheckedItems, itemIndex);
+        const itemsToMove = indicesToMove.map(idx => uncheckedItems[idx]);
 
         try {
             // Get content from both files
@@ -851,12 +1058,16 @@ const Viewer = {
             const fromContent = fromLocalFile ? fromLocalFile.content : '';
             const toContent = toLocalFile ? toLocalFile.content : '';
 
-            // Remove item from source file
-            const newFromContent = this.removeCheckboxLineByIndex(fromContent, itemIndex);
+            // Remove items from source file (in reverse order to maintain indices)
+            let newFromContent = fromContent;
+            const sortedIndices = [...indicesToMove].sort((a, b) => b - a);
+            for (const idx of sortedIndices) {
+                newFromContent = this.removeCheckboxLineByIndex(newFromContent, idx);
+            }
 
-            // Add item to destination file
+            // Add items to destination file
             const toUncheckedItems = toFile.items.filter(item => !item.checked);
-            toUncheckedItems.splice(insertIndex, 0, itemToMove);
+            toUncheckedItems.splice(insertIndex, 0, ...itemsToMove);
 
             // Reconstruct destination file content
             const toLines = toContent.split('\n');
@@ -869,17 +1080,21 @@ const Viewer = {
                 if (match) {
                     toCheckboxIndex += 1;
                     if (toCheckboxIndex === insertIndex && !inserted) {
-                        // Insert the moved item here
-                        newToLines.push(this.formatItemLine(itemToMove));
+                        // Insert all moved items here
+                        for (const item of itemsToMove) {
+                            newToLines.push(this.formatItemLine(item));
+                        }
                         inserted = true;
                     }
                 }
                 newToLines.push(line);
             });
 
-            // If we haven't inserted yet (inserting at end), add it now
+            // If we haven't inserted yet (inserting at end), add them now
             if (!inserted) {
-                newToLines.push(this.formatItemLine(itemToMove));
+                for (const item of itemsToMove) {
+                    newToLines.push(this.formatItemLine(item));
+                }
             }
 
             const newToContent = newToLines.join('\n');
@@ -888,8 +1103,10 @@ const Viewer = {
             await LocalStorageManager.saveFile(fromFile.path, newFromContent, true);
             await LocalStorageManager.saveFile(toFile.path, newToContent, true);
 
+            const itemCount = itemsToMove.length;
+            const message = itemCount > 1 ? `Moved ${itemCount} items to ${toFile.name}` : `Item moved to ${toFile.name}`;
             if (window.UI && UI.showToast) {
-                UI.showToast('Item moved to ' + toFile.name, 'success');
+                UI.showToast(message, 'success');
             }
 
             // Update sync badge
