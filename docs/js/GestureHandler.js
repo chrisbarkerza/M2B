@@ -153,6 +153,7 @@ class GestureHandler {
 
         HighlightMenu.hideHighlightMenu();
 
+        const startedOnBullet = Boolean(event.target.closest('.bullet'));
         const viewName = itemEl.dataset.view;
         const fileIndex = parseInt(itemEl.dataset.fileIndex, 10);
         const itemIndex = parseInt(itemEl.dataset.itemIndex, 10);
@@ -171,6 +172,7 @@ class GestureHandler {
             startY: event.clientY,
             lastX: event.clientX,
             lastY: event.clientY,
+            startedOnBullet,
             longPressTriggered: false,
             dragging: false,
             swipeTriggered: false,
@@ -255,15 +257,14 @@ class GestureHandler {
         }
 
         if (!state.swipeTriggered) {
-            // Check if the click was on the bullet
-            const clickedBullet = event.target.closest('.bullet');
+            const clickedBullet = state.startedOnBullet || Boolean(event.target.closest('.bullet'));
             if (clickedBullet) {
-                // Just focus the item without starting edit
-                state.itemEl.focus();
-            } else {
-                // Click on text - start inline edit
-                ItemEditor.startInlineEdit(state.itemEl, state.viewName, state.fileIndex, state.itemIndex);
+                this.resetGestureState();
+                return;
             }
+
+            // Click on text - start inline edit
+            ItemEditor.startInlineEdit(state.itemEl, state.viewName, state.fileIndex, state.itemIndex);
         }
 
         this.resetGestureState();

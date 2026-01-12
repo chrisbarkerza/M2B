@@ -5,8 +5,8 @@
  */
 class ChecklistParser {
     /**
-     * Parse markdown checkboxes and bullets into item objects
-     * @param {string} markdown - Markdown content with checkboxes
+     * Parse markdown bullets into item objects
+     * @param {string} markdown - Markdown content with bullets
      * @returns {Array} Array of item objects with text, checked, highlight, indent properties
      */
     static parseCheckboxItems(markdown) {
@@ -14,16 +14,15 @@ class ChecklistParser {
         const items = [];
 
         lines.forEach(line => {
-            // Match both checkbox format: "- [ ] text" and plain bullet format: "- text"
+            // Match both checkbox format: "- [ ] text" (legacy) and plain bullet format: "- text"
             // Also capture leading spaces for indentation
             const checkboxMatch = line.match(/^(\s*)- \[([ x])\] (.+)$/);
             const bulletMatch = line.match(/^(\s*)- (.+)$/);
 
             if (checkboxMatch) {
                 const indent = Math.floor(checkboxMatch[1].length / 2); // 2 spaces per indent
-                const checked = checkboxMatch[2] === 'x';
                 const parsed = this.parseHighlight(checkboxMatch[3]);
-                items.push({ text: parsed.text, checked, highlight: parsed.highlight, indent });
+                items.push({ text: parsed.text, checked: false, highlight: parsed.highlight, indent });
             } else if (bulletMatch) {
                 const indent = Math.floor(bulletMatch[1].length / 2); // 2 spaces per indent
                 const parsed = this.parseHighlight(bulletMatch[2]);
@@ -56,14 +55,13 @@ class ChecklistParser {
     static formatItemLine(item) {
         const highlightSuffix = item.highlight ? ` <!-- hl:${item.highlight} -->` : '';
         const indent = '  '.repeat(item.indent || 0); // 2 spaces per indent level
-        const checkMark = item.checked ? 'x' : ' ';
-        return `${indent}- [${checkMark}] ${item.text}${highlightSuffix}`;
+        return `${indent}- ${item.text}${highlightSuffix}`;
     }
 
     /**
-     * Update a specific checkbox line by index (counting only checkbox lines)
+     * Update a specific bullet line by index (counting bullet lines)
      * @param {string} sourceContent - Original markdown content
-     * @param {number} targetIndex - Index of checkbox to update (0-based)
+     * @param {number} targetIndex - Index of bullet to update (0-based)
      * @param {string} newLine - New line content
      * @returns {string} Updated markdown content
      */
@@ -71,7 +69,7 @@ class ChecklistParser {
         const lines = sourceContent.split('\n');
         let checkboxIndex = -1;
         const newLines = lines.map(line => {
-            const match = line.match(/^(\s*)- \[([ x])\] (.+)$/);
+            const match = line.match(/^(\s*)- (?:\[[ x]\] )?(.+)$/);
             if (!match) return line;
             checkboxIndex += 1;
             if (checkboxIndex === targetIndex) {
@@ -83,16 +81,16 @@ class ChecklistParser {
     }
 
     /**
-     * Remove a specific checkbox line by index
+     * Remove a specific bullet line by index
      * @param {string} sourceContent - Original markdown content
-     * @param {number} targetIndex - Index of checkbox to remove (0-based)
+     * @param {number} targetIndex - Index of bullet to remove (0-based)
      * @returns {string} Updated markdown content
      */
     static removeCheckboxLineByIndex(sourceContent, targetIndex) {
         const lines = sourceContent.split('\n');
         let checkboxIndex = -1;
         const newLines = lines.filter(line => {
-            const match = line.match(/^(\s*)- \[([ x])\] (.+)$/);
+            const match = line.match(/^(\s*)- (?:\[[ x]\] )?(.+)$/);
             if (!match) return true;
             checkboxIndex += 1;
             return checkboxIndex !== targetIndex;
@@ -101,7 +99,7 @@ class ChecklistParser {
     }
 
     /**
-     * Reorder unchecked checkbox lines to match new item order
+     * Reorder bullet lines to match new item order
      * @param {string} sourceContent - Original markdown content
      * @param {Array} uncheckedItems - Reordered array of unchecked items
      * @returns {string} Updated markdown content
@@ -110,7 +108,7 @@ class ChecklistParser {
         const lines = sourceContent.split('\n');
         let uncheckedIndex = 0;
         const newLines = lines.map(line => {
-            const match = line.match(/^(\s*)- \[ \] (.+)$/);
+            const match = line.match(/^(\s*)- (?:\[[ x]\] )?(.+)$/);
             if (!match) return line;
             const item = uncheckedItems[uncheckedIndex];
             uncheckedIndex += 1;

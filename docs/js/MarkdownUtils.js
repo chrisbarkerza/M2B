@@ -27,9 +27,8 @@ class MarkdownUtils {
         // Links
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" target="_blank">$1</a>');
 
-        // Checkboxes
-        html = html.replace(/- \[ \] (.*$)/gim, '<div class="checkbox-item"><input type="checkbox" disabled> $1</div>');
-        html = html.replace(/- \[x\] (.*$)/gim, '<div class="checkbox-item"><input type="checkbox" checked disabled> $1</div>');
+        // Legacy checkboxes -> bullets
+        html = html.replace(/- \[[ x]\] (.*$)/gim, '- $1');
 
         // Lists
         html = html.replace(/^- (.*$)/gim, '<li>$1</li>');

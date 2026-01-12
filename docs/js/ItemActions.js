@@ -43,10 +43,10 @@ class ItemActions {
             if (doneFile) {
                 doneContent = doneFile.content;
             } else {
-                doneContent = `# ${directory.split('/').pop()} - Completed\n\n<!-- Checked items moved here with completion dates -->\n\n`;
+                doneContent = `# ${directory.split('/').pop()} - Completed\n\n<!-- Completed items moved here with completion dates -->\n\n`;
             }
 
-            doneContent += `- [x] [${file.name}] ${item.text} _(${today})_\n`;
+            doneContent += `- [${file.name}] ${item.text} _(${today})_\n`;
 
             // Get source content from local storage
             const sourceFile = await LocalStorageManager.getFile(file.path);
@@ -141,6 +141,7 @@ class ItemActions {
             await this.updateSourceFile(file.path, newSourceContent, 'Indent item', message);
             file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
             ViewRenderer.render(viewName);
+            this.restoreItemFocus(viewName, fileIndex, itemIndex);
         } catch (error) {
             if (window.UI && UI.showToast) {
                 UI.showToast('Indent failed: ' + error.message, 'error');
@@ -191,6 +192,7 @@ class ItemActions {
             await this.updateSourceFile(file.path, newSourceContent, 'Outdent item', message);
             file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
             ViewRenderer.render(viewName);
+            this.restoreItemFocus(viewName, fileIndex, itemIndex);
         } catch (error) {
             if (window.UI && UI.showToast) {
                 UI.showToast('Outdent failed: ' + error.message, 'error');
@@ -277,6 +279,25 @@ class ItemActions {
      */
     static async updateSourceFile(path, content, message, toastMessage) {
         await FileUpdateManager.updateSourceFile(path, content, message, toastMessage);
+    }
+
+    /**
+     * Restore focus to the updated item after re-render.
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     * @param {number} itemIndex - Item index
+     */
+    static restoreItemFocus(viewName, fileIndex, itemIndex) {
+        const config = ViewerConfig.getConfig(viewName);
+        if (!config) return;
+        window.setTimeout(() => {
+            const content = document.getElementById(config.contentId);
+            if (!content) return;
+            const itemEl = content.querySelector(`.checklist-item[data-file-index="${fileIndex}"][data-item-index="${itemIndex}"]`);
+            if (itemEl) {
+                itemEl.focus();
+            }
+        }, 50);
     }
 }
 

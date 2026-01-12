@@ -210,7 +210,7 @@ class FileExplorer {
     static async createNewFile(directory, fileName, viewName) {
         const api = new GitHubAPI(AppState.token, AppState.repo);
         const filePath = `${directory}/${fileName}.md`;
-        const content = `# ${fileName}\n\n- [ ] First item\n`;
+        const content = `# ${fileName}\n\n- First item\n`;
 
         try {
             if (AppState.isOnline) {
