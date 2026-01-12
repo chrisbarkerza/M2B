@@ -1652,3 +1652,88 @@ body {
     margin-bottom: 8px;
     border-left: 3px solid var(--primary-color);
 }
+
+/* === Sync Badge === */
+.sync-btn {
+    position: relative;
+}
+
+.sync-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.sync-badge.hidden {
+    display: none;
+}
+
+.sync-badge.has-conflicts {
+    background: var(--danger-color);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* === Conflict Resolution Modal === */
+.conflict-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.conflict-item {
+    background: var(--bg-color);
+    border: 2px solid var(--danger-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+
+.conflict-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.conflict-icon {
+    color: var(--danger-color);
+}
+
+.conflict-item-details {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin-bottom: 16px;
+    padding-left: 28px;
+}
+
+.conflict-item-details div {
+    margin-bottom: 4px;
+}
+
+.conflict-item-actions {
+    display: flex;
+    gap: 8px;
+    padding-left: 28px;
+}
+
+.conflict-item-actions .btn {
+    flex: 1;
+}
