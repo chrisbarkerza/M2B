@@ -691,7 +691,7 @@ body {
 .menu-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
 }
 
 .menu-item {
@@ -711,6 +711,30 @@ body {
 .menu-item:hover, .menu-item:active {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
+}
+
+.menu-item.accordion-header {
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.menu-item.accordion-header:hover,
+.menu-item.accordion-header:active {
+    transform: none;
+    box-shadow: none;
+    background: var(--bg-color);
+}
+
+.menu-item.accordion-header .menu-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 1rem;
+    background: transparent;
+    border-radius: 0;
 }
 
 .menu-icon {
