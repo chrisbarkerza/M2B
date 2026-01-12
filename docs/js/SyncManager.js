@@ -339,29 +339,48 @@ class SyncManager {
      * @returns {Promise<void>}
      */
     static async performMigration() {
-        const hasData = await LocalStorageManager.hasData();
+        try {
+            const hasData = await LocalStorageManager.hasData();
+            console.log('Migration check: hasData =', hasData);
 
-        if (!hasData) {
-            console.log('First run with local-first storage - loading from GitHub...');
+            if (!hasData) {
+                console.log('First run with local-first storage - loading from GitHub...');
 
-            // Process old offline queue first (if any)
-            if (AppState.queue && AppState.queue.length > 0) {
-                console.log('Processing existing offline queue...');
-                await QueueManager.processQueue();
+                // Process old offline queue first (if any)
+                if (AppState.queue && AppState.queue.length > 0) {
+                    console.log('Processing existing offline queue...');
+                    await QueueManager.processQueue();
+                }
+
+                // Load all files from GitHub
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Loading files from GitHub...', 'info');
+                }
+
+                const fileCount = await this.loadAllFromGitHub();
+                console.log(`Migration complete: loaded ${fileCount} files`);
+
+                if (fileCount === 0) {
+                    console.warn('No files were loaded from GitHub!');
+                    if (window.UI && UI.showToast) {
+                        UI.showToast('No files found in GitHub repository', 'warning');
+                    }
+                } else {
+                    if (window.UI && UI.showToast) {
+                        UI.showToast(`Loaded ${fileCount} files`, 'success');
+                    }
+                }
+
+                localStorage.setItem('migrated_to_local_first', 'true');
+            } else {
+                console.log('Local storage already has data, skipping migration');
             }
-
-            // Load all files from GitHub
+        } catch (error) {
+            console.error('Migration failed:', error);
             if (window.UI && UI.showToast) {
-                UI.showToast('Loading files from GitHub...', 'info');
+                UI.showToast('Migration failed: ' + error.message, 'error');
             }
-
-            const fileCount = await this.loadAllFromGitHub();
-
-            if (window.UI && UI.showToast) {
-                UI.showToast(`Loaded ${fileCount} files`, 'success');
-            }
-
-            localStorage.setItem('migrated_to_local_first', 'true');
+            throw error;
         }
     }
 

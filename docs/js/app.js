@@ -248,15 +248,21 @@ class UI {
 
         // Initialize local storage and perform migration
         if (AppState.token) {
-            await SyncManager.performMigration();
-            await this.updateSyncBadge();
+            try {
+                await SyncManager.performMigration();
+                await this.updateSyncBadge();
 
-            // Background sync (non-blocking)
-            SyncManager.backgroundSync();
+                // Background sync (non-blocking)
+                SyncManager.backgroundSync();
+            } catch (error) {
+                console.error('Error during migration:', error);
+                this.showToast('Failed to initialize local storage. Check console for details.', 'error');
+            }
         }
 
         // Load data if token exists
         if (AppState.token) {
+            // Note: syncData is not awaited to avoid blocking the UI
             this.syncData();
         } else {
             this.showSettings();
