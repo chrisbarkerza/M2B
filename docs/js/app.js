@@ -42,6 +42,11 @@ class UI {
 
         // Load data if token exists
         if (AppState.token) {
+            // Render the current view from local storage immediately.
+            if (window.Viewer && Viewer.isView(AppState.currentView)) {
+                await Viewer.load(AppState.currentView);
+            }
+
             // Note: syncData is not awaited to avoid blocking the UI
             this.syncData();
         } else {
