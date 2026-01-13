@@ -132,7 +132,7 @@ body {
 /* === Views === */
 .view {
     display: none;
-    padding: var(--spacing);
+    padding: 2px;
     animation: fadeIn 0.3s;
 }
 
@@ -146,7 +146,7 @@ body {
 }
 
 .view-header {
-    margin-bottom: var(--spacing);
+    margin-bottom: 2px;
     position: relative;
     min-height: 40px;
     display: flex;
@@ -206,7 +206,7 @@ body {
 }
 
 .content-area {
-    margin-top: var(--spacing);
+    margin-top: 2px;
 }
 
 /* === Capture View === */
@@ -450,6 +450,11 @@ body {
     background: var(--bg-color);
 }
 
+.checklist-item.move-mode-active {
+    outline: 2px dashed var(--primary-color);
+    outline-offset: -2px;
+}
+
 .checklist-item.checked {
     opacity: 0.6;
 }
@@ -561,6 +566,16 @@ body {
     opacity: 0.6;
     background: var(--bg-color);
     cursor: grabbing;
+}
+
+.file-drag-divider {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
+    pointer-events: none;
 }
 
 .due-date {
@@ -1255,6 +1270,7 @@ body {
 
 .toast.error {
     background: var(--danger-color);
+    color: #fff;
 }
 
 .toast.info {
@@ -1409,6 +1425,17 @@ body {
     margin-bottom: 8px;
 }
 
+.move-folder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.move-folder-option {
+    text-align: left;
+    width: 100%;
+}
+
 .file-content-header h3 {
     flex: 1;
     margin: 0;
@@ -1496,30 +1523,35 @@ body {
 .accordion {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+    position: relative;
 }
 
 .accordion-item {
     background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color);
     border-radius: var(--radius-sm);
     overflow: hidden;
 }
 
 .accordion-item.highlight-yellow {
     background: #fff6c2;
+    border-color: #d2b764;
 }
 
 .accordion-item.highlight-green {
     background: #d8f5d0;
+    border-color: #8ec47f;
 }
 
 .accordion-item.highlight-blue {
     background: #d8ebff;
+    border-color: #7aa8e0;
 }
 
 .accordion-item.highlight-pink {
     background: #ffd9ec;
+    border-color: #d28aaa;
 }
 
 .accordion-header {
@@ -1535,8 +1567,19 @@ body {
     color: var(--text-color);
 }
 
+.accordion-header.move-mode-active {
+    outline: 2px dashed var(--primary-color);
+    outline-offset: -2px;
+}
+
 .accordion-header:hover {
     background: var(--bg-color);
+}
+
+.accordion-header.dragging {
+    cursor: grabbing;
+    background: var(--bg-color);
+    opacity: 0.6;
 }
 
 .accordion-icon {

@@ -6,6 +6,7 @@
 class ViewRenderer {
     static fileHeaderGestureState = null;
     static ignoreFileHeaderClickUntil = 0;
+    static fileDragState = null;
 
     /**
      * Render view data as accordion HTML
@@ -85,6 +86,10 @@ class ViewRenderer {
         }
 
         this.bindFileHeaderInteractions(content, viewName);
+
+        if (window.MoveModeManager) {
+            MoveModeManager.refreshActiveElement();
+        }
     }
 
     static bindFileHeaderInteractions(content) {
@@ -92,6 +97,7 @@ class ViewRenderer {
         content.dataset.fileHeaderBound = 'true';
 
         content.addEventListener('click', event => {
+            if (this.fileDragState && this.fileDragState.dragging) return;
             if (Date.now() < this.ignoreFileHeaderClickUntil) return;
             const header = event.target.closest('.accordion-header');
             if (!header) return;
@@ -104,14 +110,20 @@ class ViewRenderer {
 
             const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             const modifierKey = isMac ? event.metaKey : event.ctrlKey;
-            if (!modifierKey || !event.shiftKey) return;
+            const viewName = header.dataset.view;
+            const fileIndex = parseInt(header.dataset.fileIndex, 10);
+            const moveModeActive = window.MoveModeManager
+                && MoveModeManager.isActiveFile(viewName, fileIndex);
+            const moveModifierActive = modifierKey && event.shiftKey;
+
+            if (!moveModeActive && !moveModifierActive) return;
 
             if (event.key === 'ArrowUp') {
                 event.preventDefault();
-                this.moveFile(header.dataset.view, parseInt(header.dataset.fileIndex, 10), -1);
+                this.moveFile(viewName, fileIndex, -1);
             } else if (event.key === 'ArrowDown') {
                 event.preventDefault();
-                this.moveFile(header.dataset.view, parseInt(header.dataset.fileIndex, 10), 1);
+                this.moveFile(viewName, fileIndex, 1);
             }
         });
 
@@ -132,13 +144,17 @@ class ViewRenderer {
                 header,
                 startX: event.clientX,
                 startY: event.clientY,
+                lastY: event.clientY,
                 longPressTriggered: false,
-                longPressTimer: null
+                longPressTimer: null,
+                dragging: false,
+                dragInsertIndex: null,
+                dragDivider: null,
+                accordion: null
             };
 
             gestureState.longPressTimer = window.setTimeout(() => {
                 gestureState.longPressTriggered = true;
-                this.showFileHighlightMenu(header);
             }, 500);
 
             if (header.setPointerCapture) {
@@ -152,9 +168,19 @@ class ViewRenderer {
             if (!state || state.pointerId !== event.pointerId) return;
             const dx = event.clientX - state.startX;
             const dy = event.clientY - state.startY;
+            state.lastY = event.clientY;
             if (!state.longPressTriggered && Math.abs(dx) + Math.abs(dy) > 24) {
                 window.clearTimeout(state.longPressTimer);
                 state.longPressTimer = null;
+            }
+            if (state.longPressTriggered) {
+                if (!state.dragging && Math.abs(dy) > 10) {
+                    this.startFileDrag(state);
+                }
+                if (state.dragging) {
+                    this.updateFileDragPosition(state, event.clientY);
+                    event.preventDefault();
+                }
             }
         });
 
@@ -162,7 +188,11 @@ class ViewRenderer {
             const state = this.fileHeaderGestureState;
             if (!state || state.pointerId !== event.pointerId) return;
             window.clearTimeout(state.longPressTimer);
-            if (state.longPressTriggered) {
+            if (state.dragging) {
+                this.finishFileDrag(state);
+                this.ignoreFileHeaderClickUntil = Date.now() + 400;
+            } else if (state.longPressTriggered) {
+                this.showFileHighlightMenu(state.header);
                 this.ignoreFileHeaderClickUntil = Date.now() + 400;
             }
             this.fileHeaderGestureState = null;
@@ -172,8 +202,89 @@ class ViewRenderer {
             const state = this.fileHeaderGestureState;
             if (!state || state.pointerId !== event.pointerId) return;
             window.clearTimeout(state.longPressTimer);
+            if (state.dragging) {
+                this.cleanupFileDrag(state);
+            }
             this.fileHeaderGestureState = null;
         });
+    }
+
+    static startFileDrag(state) {
+        state.dragging = true;
+        state.header.classList.add('dragging');
+
+        const accordion = state.header.closest('.accordion');
+        if (!accordion) return;
+
+        state.accordion = accordion;
+        state.dragDivider = document.createElement('div');
+        state.dragDivider.className = 'file-drag-divider';
+        accordion.appendChild(state.dragDivider);
+        this.updateFileDragPosition(state, state.lastY);
+        this.fileDragState = state;
+    }
+
+    static updateFileDragPosition(state, pointerY) {
+        if (!state.accordion) return;
+        const items = Array.from(state.accordion.querySelectorAll('.accordion-item'));
+        const activeItem = state.header.closest('.accordion-item');
+        const itemsExcludingActive = items.filter(item => item !== activeItem);
+
+        let insertIndex = itemsExcludingActive.length;
+        for (let i = 0; i < itemsExcludingActive.length; i += 1) {
+            const rect = itemsExcludingActive[i].getBoundingClientRect();
+            if (pointerY < rect.top + rect.height / 2) {
+                insertIndex = i;
+                break;
+            }
+        }
+
+        const accordionRect = state.accordion.getBoundingClientRect();
+        let top = 0;
+        if (itemsExcludingActive.length === 0) {
+            top = 0;
+        } else if (insertIndex === itemsExcludingActive.length) {
+            const lastRect = itemsExcludingActive[itemsExcludingActive.length - 1].getBoundingClientRect();
+            top = lastRect.bottom - accordionRect.top;
+        } else {
+            const targetRect = itemsExcludingActive[insertIndex].getBoundingClientRect();
+            top = targetRect.top - accordionRect.top;
+        }
+
+        state.dragInsertIndex = insertIndex;
+        state.dragDivider.style.top = `${top}px`;
+    }
+
+    static finishFileDrag(state) {
+        if (state.dragInsertIndex === null || state.dragInsertIndex === undefined) {
+            this.cleanupFileDrag(state);
+            return;
+        }
+
+        const viewName = state.header.dataset.view;
+        const fromIndex = parseInt(state.header.dataset.fileIndex, 10);
+        const toIndex = state.dragInsertIndex;
+
+        if (Number.isInteger(fromIndex) && Number.isInteger(toIndex) && fromIndex !== toIndex) {
+            this.moveFileToIndex(viewName, fromIndex, toIndex);
+        }
+
+        this.cleanupFileDrag(state);
+    }
+
+    static cleanupFileDrag(state) {
+        if (state.header) {
+            state.header.classList.remove('dragging');
+        }
+        if (state.dragDivider && state.dragDivider.parentNode) {
+            state.dragDivider.parentNode.removeChild(state.dragDivider);
+        }
+        state.dragDivider = null;
+        state.dragging = false;
+        state.dragInsertIndex = null;
+        if (this.fileDragState === state) {
+            this.fileDragState = null;
+        }
     }
 
     static showFileHighlightMenu(header) {
@@ -362,7 +473,74 @@ class ViewRenderer {
         content = MarkdownUtils.setOrderKey(content, orderKey);
         await LocalStorageManager.saveFile(moved.path, content, true, localFile.githubSHA);
 
+        let focusMoveMode = false;
+        if (window.MoveModeManager) {
+            MoveModeManager.updateFileIndex(viewName, fileIndex, newIndex);
+            focusMoveMode = MoveModeManager.isActiveFile(viewName, newIndex);
+        }
+
         this.render(viewName);
+        window.setTimeout(() => {
+            if (window.MoveModeManager) {
+                MoveModeManager.refreshActiveElement({ focus: focusMoveMode });
+            }
+        }, 50);
+        if (window.UI && UI.updateSyncBadge) {
+            UI.updateSyncBadge();
+        }
+    }
+
+    static async moveFileToIndex(viewName, fileIndex, targetIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files) return;
+        const files = data.files;
+        if (fileIndex < 0 || fileIndex >= files.length) return;
+        if (targetIndex < 0 || targetIndex >= files.length) return;
+        if (fileIndex === targetIndex) return;
+
+        if (files.some(file => !file.orderKey)) {
+            for (let i = 0; i < files.length; i += 1) {
+                const file = files[i];
+                const localFile = await LocalStorageManager.getFile(file.path);
+                if (!localFile) continue;
+                let content = localFile.content;
+                const ensured = MarkdownUtils.ensureFileId(content);
+                content = ensured.content;
+                const orderKey = MarkdownUtils.generateOrderKeyForIndex(i);
+                file.orderKey = orderKey;
+                content = MarkdownUtils.setOrderKey(content, orderKey);
+                await LocalStorageManager.saveFile(file.path, content, true, localFile.githubSHA);
+            }
+        }
+
+        const moved = files.splice(fileIndex, 1)[0];
+        files.splice(targetIndex, 0, moved);
+
+        const prevKey = files[targetIndex - 1] ? files[targetIndex - 1].orderKey : null;
+        const nextKey = files[targetIndex + 1] ? files[targetIndex + 1].orderKey : null;
+        const orderKey = MarkdownUtils.generateOrderKeyBetween(prevKey, nextKey);
+        moved.orderKey = orderKey;
+
+        const localFile = await LocalStorageManager.getFile(moved.path);
+        if (!localFile) return;
+        let content = localFile.content;
+        const ensured = MarkdownUtils.ensureFileId(content);
+        content = ensured.content;
+        content = MarkdownUtils.setOrderKey(content, orderKey);
+        await LocalStorageManager.saveFile(moved.path, content, true, localFile.githubSHA);
+
+        let focusMoveMode = false;
+        if (window.MoveModeManager) {
+            MoveModeManager.updateFileIndex(viewName, fileIndex, targetIndex);
+            focusMoveMode = MoveModeManager.isActiveFile(viewName, targetIndex);
+        }
+
+        this.render(viewName);
+        window.setTimeout(() => {
+            if (window.MoveModeManager) {
+                MoveModeManager.refreshActiveElement({ focus: focusMoveMode });
+            }
+        }, 50);
         if (window.UI && UI.updateSyncBadge) {
             UI.updateSyncBadge();
         }

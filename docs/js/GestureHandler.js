@@ -39,11 +39,10 @@ class GestureHandler {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const modifierKey = isMac ? event.metaKey : event.ctrlKey;
 
-        if (!modifierKey || !event.shiftKey) return;
-
         // Find the currently focused or editing item
         const editingItem = event.target.closest('.checklist-item');
         if (!editingItem) return;
+        if (event.target.closest('.checklist-edit')) return;
 
         const viewName = editingItem.dataset.view;
         const fileIndex = parseInt(editingItem.dataset.fileIndex, 10);
@@ -51,17 +50,25 @@ class GestureHandler {
 
         if (!this.isGestureTargetValid(viewName, fileIndex, itemIndex)) return;
 
+        const moveModeActive = window.MoveModeManager
+            && MoveModeManager.isActiveItem(viewName, fileIndex, itemIndex);
+        const moveModifierActive = modifierKey && event.shiftKey;
+
+        if (!moveModeActive && !moveModifierActive) return;
+
         const data = AppState.data[viewName];
         const file = data.files[fileIndex];
         const uncheckedItems = file.items.filter(item => !item.checked);
 
         switch (event.key) {
             case 'ArrowLeft':
+                if (!moveModifierActive) break;
                 event.preventDefault();
                 ItemActions.outdentItem(viewName, fileIndex, itemIndex);
                 break;
 
             case 'ArrowRight':
+                if (!moveModifierActive) break;
                 event.preventDefault();
                 ItemActions.indentItem(viewName, fileIndex, itemIndex);
                 break;

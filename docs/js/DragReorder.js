@@ -215,6 +215,9 @@ class DragReorder {
             const message = itemCount > 1 ? `Reordered ${itemCount} items` : 'Reordered';
             await this.updateSourceFile(file.path, newSourceContent, `Reorder items in ${file.name}`, message);
             file.items = normalized.items;
+            if (window.MoveModeManager) {
+                MoveModeManager.updateItemIndex(viewName, fileIndex, fromIndex, adjustedToIndex);
+            }
             ViewRenderer.render(viewName);
 
             // Restore focus to the moved item at its new position
@@ -224,6 +227,9 @@ class DragReorder {
                 const newItemEl = content.querySelector(`.checklist-item[data-item-index="${adjustedToIndex}"]`);
                 if (newItemEl) {
                     newItemEl.focus();
+                }
+                if (window.MoveModeManager) {
+                    MoveModeManager.refreshActiveElement();
                 }
             }, 50);
         } catch (error) {

@@ -1,11 +1,14 @@
 /**
  * FileExplorer - File viewing and navigation
  * Handles file browser modal and file viewing
- * Dependencies: AppState, GitHubAPI, MarkdownUtils
+ * Dependencies: AppState, GitHubAPI, MarkdownUtils, LocalStorageManager, ViewerConfig, Navigation
  */
 class FileExplorer {
     static fileGestureState = null;
     static ignoreFileClickUntil = 0;
+    static currentFilePath = null;
+    static currentFileName = null;
+    static moveDialogBound = false;
 
     /**
      * Show file viewer modal
@@ -23,6 +26,74 @@ class FileExplorer {
         document.getElementById('fileViewerModal').classList.add('hidden');
         document.getElementById('fileContent').classList.add('hidden');
         document.getElementById('fileTree').classList.remove('hidden');
+        this.currentFilePath = null;
+        this.currentFileName = null;
+    }
+
+    static bindMoveFolderDialog() {
+        if (this.moveDialogBound) return;
+        this.moveDialogBound = true;
+
+        const modal = document.getElementById('moveFileModal');
+        if (!modal) return;
+
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                this.closeMoveFolderDialog();
+            }
+        });
+
+        const list = document.getElementById('moveFolderList');
+        if (!list) return;
+
+        list.addEventListener('click', async event => {
+            const button = event.target.closest('[data-directory]');
+            if (!button) return;
+            const targetDirectory = button.dataset.directory;
+            const path = modal.dataset.path;
+            if (!targetDirectory || !path) return;
+            await this.moveFileToDirectory(path, targetDirectory);
+            this.closeMoveFolderDialog();
+        });
+    }
+
+    static showMoveFolderDialog(path) {
+        this.bindMoveFolderDialog();
+        const modal = document.getElementById('moveFileModal');
+        const list = document.getElementById('moveFolderList');
+        if (!modal || !list) return;
+
+        const targets = this.getMoveTargets();
+        if (!targets.length) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('No target folders found', 'error');
+            }
+            return;
+        }
+
+        const currentDirectory = path.split('/').slice(0, -1).join('/');
+        const options = targets
+            .filter(target => target.directory !== currentDirectory)
+            .map(target => {
+                const label = target.directory.replace('md/', '').replace(/\//g, ' > ');
+                return `
+                    <button type="button" class="btn btn-secondary move-folder-option" data-directory="${target.directory}">
+                        ${label}
+                    </button>
+                `;
+            })
+            .join('');
+
+        list.innerHTML = options || '<div class="empty-state">No other folders available.</div>';
+        modal.dataset.path = path;
+        modal.classList.remove('hidden');
+    }
+
+    static closeMoveFolderDialog() {
+        const modal = document.getElementById('moveFileModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.dataset.path = '';
     }
 
     /**
@@ -121,7 +192,11 @@ class FileExplorer {
         fileTree.classList.add('hidden');
         fileContent.classList.remove('hidden');
         fileTitle.textContent = filename;
+        fileContent.dataset.path = path;
         fileContentBody.innerHTML = '<div class="loading">Loading file...</div>';
+        this.currentFilePath = path;
+        this.currentFileName = filename;
+        this.bindMoveFolderDialog();
 
         try {
             const api = new GitHubAPI(AppState.token, AppState.repo);
@@ -132,6 +207,150 @@ class FileExplorer {
             fileContentBody.innerHTML = htmlContent;
         } catch (error) {
             fileContentBody.innerHTML = `<div class="error">Error loading file: ${error.message}</div>`;
+        }
+    }
+
+    static getMoveTargets() {
+        if (!window.ViewerConfig || !ViewerConfig.config) return [];
+        const seen = new Set();
+        return Object.values(ViewerConfig.config)
+            .map(config => config.directory)
+            .filter(dir => {
+                if (!dir || seen.has(dir)) return false;
+                seen.add(dir);
+                return true;
+            })
+            .map(directory => ({ directory }));
+    }
+
+    static findViewNameByDirectory(directory) {
+        if (!window.ViewerConfig || !ViewerConfig.config) return null;
+        const entries = Object.entries(ViewerConfig.config);
+        for (const [viewName, config] of entries) {
+            if (config.directory === directory) {
+                return viewName;
+            }
+        }
+        return null;
+    }
+
+    static async moveCurrentFile() {
+        const path = this.currentFilePath;
+        if (!path) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('No file selected to move', 'error');
+            }
+            return;
+        }
+        this.showMoveFolderDialog(path);
+    }
+
+    static async moveFileByPath(path) {
+        if (!path) return;
+        this.currentFilePath = path;
+        this.currentFileName = path.split('/').pop();
+        await this.moveCurrentFile();
+    }
+
+    static async moveFileToDirectory(path, targetDirectory) {
+        if (!path || !targetDirectory) return;
+        const filename = path.split('/').pop();
+        const currentDirectory = path.split('/').slice(0, -1).join('/');
+        const newPath = `${targetDirectory}/${filename}`;
+
+        if (newPath === path || targetDirectory === currentDirectory) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('File is already in that folder', 'info');
+            }
+            return;
+        }
+
+        const existingLocal = await LocalStorageManager.getFile(newPath);
+        if (existingLocal) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('A file with that name already exists in the target folder', 'error');
+            }
+            return;
+        }
+
+        if (AppState.isOnline) {
+            try {
+                const api = new GitHubAPI(AppState.token, AppState.repo);
+                const existingRemote = await api.request(`/contents/${newPath}`, 'GET', null, true);
+                if (existingRemote) {
+                    if (window.UI && UI.showToast) {
+                        UI.showToast('A file with that name already exists in the target folder', 'error');
+                    }
+                    return;
+                }
+            } catch (error) {
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Failed to check target folder: ' + error.message, 'error');
+                }
+                return;
+            }
+        }
+
+        let localFile = await LocalStorageManager.getFile(path);
+        let content = localFile ? localFile.content : null;
+        let githubSHA = localFile ? localFile.githubSHA : null;
+
+        if (!content && AppState.isOnline) {
+            try {
+                const api = new GitHubAPI(AppState.token, AppState.repo);
+                content = await api.getFile(path);
+            } catch (error) {
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Failed to load file content: ' + error.message, 'error');
+                }
+                return;
+            }
+        }
+
+        if (!content) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('File not available locally to move', 'error');
+            }
+            return;
+        }
+
+        const ensured = MarkdownUtils.ensureFileId(content);
+        content = ensured.content;
+
+        await LocalStorageManager.saveFile(newPath, content, true, githubSHA);
+        await LocalStorageManager.deleteFile(path);
+
+        if (window.FileExplorer && FileExplorer.moveFileHighlight) {
+            FileExplorer.moveFileHighlight(path, newPath);
+        }
+
+        this.currentFilePath = newPath;
+        this.currentFileName = filename;
+        const fileContent = document.getElementById('fileContent');
+        if (fileContent) {
+            fileContent.dataset.path = newPath;
+        }
+
+        const oldView = this.findViewNameByDirectory(currentDirectory);
+        const newView = this.findViewNameByDirectory(targetDirectory);
+        if (window.Navigation && Navigation.loadSharedView) {
+            if (oldView) {
+                await Navigation.loadSharedView(oldView);
+            }
+            if (newView && newView !== oldView) {
+                await Navigation.loadSharedView(newView);
+            }
+        }
+
+        if (AppState.isOnline) {
+            await this.loadFileTree();
+        }
+
+        if (window.UI && UI.showToast) {
+            UI.showToast('File moved', 'success');
+        }
+        if (window.UI && UI.updateSyncBadge) {
+            UI.updateSyncBadge();
         }
     }
 

@@ -433,6 +433,18 @@
             </div>
         </div>
 
+        <div id="moveFileModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Move File</h2>
+                    <button class="close-btn" onclick="FileExplorer.closeMoveFolderDialog()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="move-folder-list" id="moveFolderList"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Daily Digest Modal -->
         <div id="digestModal" class="modal hidden fullscreen-modal">
             <div class="modal-content modal-large">
@@ -577,6 +589,7 @@
 
     <!-- Viewer Modules -->
     <script src="js/ViewerConfig.js"></script>
+    <script src="js/MoveModeManager.js"></script>
     <script src="js/ViewRenderer.js"></script>
     <script src="js/ItemEditor.js"></script>
     <script src="js/ItemActions.js"></script>

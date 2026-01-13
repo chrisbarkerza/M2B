@@ -65,6 +65,10 @@ class HighlightMenu {
                     ViewRenderer.renameFileByPath(path, viewName, fileIndex);
                 } else if (action === 'move-mode') {
                     this.enterFileMoveMode(viewName, fileIndex);
+                } else if (action === 'move-folder') {
+                    if (window.FileExplorer && FileExplorer.moveFileByPath) {
+                        FileExplorer.moveFileByPath(path);
+                    }
                 }
             }
         });
@@ -189,6 +193,7 @@ class HighlightMenu {
         html += '<button type="button" class="menu-action-btn" data-action="done">Done</button>';
         html += '<button type="button" class="menu-action-btn" data-action="rename">Rename</button>';
         html += '<button type="button" class="menu-action-btn" data-action="move-mode">Move mode</button>';
+        html += '<button type="button" class="menu-action-btn" data-action="move-folder">Move folder</button>';
 
         menu.innerHTML = html;
         menu.dataset.targetType = 'file';
@@ -215,10 +220,14 @@ class HighlightMenu {
         const content = document.getElementById(config.contentId);
         const itemEl = content?.querySelector(`.checklist-item[data-file-index="${fileIndex}"][data-item-index="${itemIndex}"]`);
         if (itemEl) {
-            itemEl.focus();
+            if (window.MoveModeManager) {
+                MoveModeManager.enterItem(viewName, fileIndex, itemIndex, itemEl);
+            } else {
+                itemEl.focus();
+            }
         }
         if (window.UI && UI.showToast) {
-            UI.showToast('Move mode: use Cmd+Shift+Arrow', 'info');
+            UI.showToast('Move mode: use Arrow keys to move', 'info');
         }
     }
 
@@ -231,10 +240,14 @@ class HighlightMenu {
         }
         const header = document.querySelector(`.accordion-header[data-view="${viewName}"][data-file-index="${fileIndex}"]`);
         if (header) {
-            header.focus();
+            if (window.MoveModeManager) {
+                MoveModeManager.enterFile(viewName, fileIndex, header);
+            } else {
+                header.focus();
+            }
         }
         if (window.UI && UI.showToast) {
-            UI.showToast('Move mode: use Cmd+Shift+Arrow', 'info');
+            UI.showToast('Move mode: use Arrow keys to move', 'info');
         }
     }
 
