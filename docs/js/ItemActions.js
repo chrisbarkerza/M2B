@@ -79,12 +79,26 @@ class ItemActions {
      * Increase item indent level (and all children)
      * @param {string} viewName - View name
      * @param {number} fileIndex - File index
-     * @param {number} itemIndex - Item index
+     * @param {number} itemIndex - Item index (-1 for ProseMirror)
      */
     static async indentItem(viewName, fileIndex, itemIndex) {
         const data = AppState.data[viewName];
         if (!data || !data.files || !data.files[fileIndex]) return;
         const file = data.files[fileIndex];
+
+        // ProseMirror mode
+        if (itemIndex === -1 || file.editorView) {
+            if (!file.editorView) return;
+            const indentCommand = ProseMirrorSetup.commands.indent();
+            if (indentCommand(file.editorView.state, file.editorView.dispatch)) {
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Item indented', 'success');
+                }
+            }
+            return;
+        }
+
+        // Old markdown mode
         const item = file.items[itemIndex];
         if (!item) return;
 
@@ -154,12 +168,26 @@ class ItemActions {
      * Decrease item indent level (and all children)
      * @param {string} viewName - View name
      * @param {number} fileIndex - File index
-     * @param {number} itemIndex - Item index
+     * @param {number} itemIndex - Item index (-1 for ProseMirror)
      */
     static async outdentItem(viewName, fileIndex, itemIndex) {
         const data = AppState.data[viewName];
         if (!data || !data.files || !data.files[fileIndex]) return;
         const file = data.files[fileIndex];
+
+        // ProseMirror mode
+        if (itemIndex === -1 || file.editorView) {
+            if (!file.editorView) return;
+            const dedentCommand = ProseMirrorSetup.commands.dedent();
+            if (dedentCommand(file.editorView.state, file.editorView.dispatch)) {
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Item outdented', 'success');
+                }
+            }
+            return;
+        }
+
+        // Old markdown mode
         const item = file.items[itemIndex];
         if (!item) return;
 
@@ -337,25 +365,31 @@ class ItemActions {
 
         const { state, dispatch } = file.editorView;
         const { selection } = state;
-        const { $from, $to } = selection;
+        const { $from } = selection;
 
-        // Find the list node at the current selection
+        // Find the list node containing the selection
         let listNode = null;
         let listPos = null;
 
-        state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-            if (node.type.name === 'list' && !listNode) {
+        // Walk up from selection to find parent list node
+        for (let d = $from.depth; d >= 0; d--) {
+            const node = $from.node(d);
+            if (node.type.name === 'list') {
                 listNode = node;
-                listPos = pos;
-                return false;
+                listPos = $from.before(d);
+                break;
             }
-        });
+        }
 
         if (listNode && listPos !== null) {
             const tr = state.tr.delete(listPos, listPos + listNode.nodeSize);
             dispatch(tr);
             if (window.UI && UI.showToast) {
                 UI.showToast('Item deleted', 'success');
+            }
+        } else {
+            if (window.UI && UI.showToast) {
+                UI.showToast('No item selected to delete', 'info');
             }
         }
     }
@@ -407,15 +441,12 @@ class ItemActions {
         const file = data.files[fileIndex];
 
         // Confirm deletion
-        if (!confirm(`Delete file "${file.name}"? This cannot be undone.`)) {
+        if (!confirm(`Delete file "${file.name}"? This will be synced to GitHub on next sync.`)) {
             return;
         }
 
         try {
-            const api = new GitHubAPI(AppState.token, AppState.repo);
-            await api.deleteFile(file.path, `Delete file: ${file.name}`);
-
-            // Remove from local storage
+            // Remove from local storage (mark as deleted)
             await LocalStorageManager.deleteFile(file.path);
 
             // Remove from data
@@ -425,7 +456,7 @@ class ItemActions {
             ViewRenderer.render(viewName);
 
             if (window.UI && UI.showToast) {
-                UI.showToast('File deleted', 'success');
+                UI.showToast('File marked for deletion', 'success');
             }
 
             // Update sync badge

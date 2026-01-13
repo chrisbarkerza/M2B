@@ -18,11 +18,13 @@ class GestureHandler {
         content.addEventListener('pointerup', this.handlePointerUp.bind(this));
         content.addEventListener('pointercancel', this.handlePointerCancel.bind(this));
 
-        // Prevent browser's default long-press context menu
+        // Prevent browser's default long-press context menu on checklist items
         content.addEventListener('contextmenu', (event) => {
+            // Check if the event target or any parent is a checklist item
             const itemEl = event.target.closest('.checklist-item');
             if (itemEl) {
                 event.preventDefault();
+                return false;
             }
         });
 

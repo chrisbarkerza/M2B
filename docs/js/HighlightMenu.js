@@ -90,32 +90,38 @@ class HighlightMenu {
      * @param {HTMLElement} itemEl - Item element
      * @param {string} viewName - View name
      * @param {number} fileIndex - File index
-     * @param {number} itemIndex - Item index
+     * @param {number} itemIndex - Item index (-1 for ProseMirror items)
      */
     static showHighlightMenu(itemEl, viewName, fileIndex, itemIndex) {
         const menu = this.ensureHighlightMenu();
         const data = AppState.data[viewName];
-        const item = data?.files?.[fileIndex]?.items?.[itemIndex];
-        const current = item?.highlight || 'none';
-        const colors = [
-            { id: 'yellow', label: 'Yellow' },
-            { id: 'green', label: 'Green' },
-            { id: 'blue', label: 'Blue' },
-            { id: 'pink', label: 'Pink' },
-            { id: 'none', label: 'Clear' }
-        ];
+        const isProseMirror = itemIndex === -1;
 
-        // Build HTML with color squares in a row, then Done/Indent/Outdent buttons
-        let html = '<div class="color-row">';
-        colors.forEach(color => {
-            const activeClass = color.id === current ? ' active' : '';
-            html += `<button type="button" class="color-square${activeClass}" data-color="${color.id}" title="${color.label}">
-                <span class="highlight-swatch highlight-${color.id}"></span>
-            </button>`;
-        });
-        html += '</div>';
+        let html = '';
 
-        html += '<button type="button" class="menu-action-btn" data-action="done">Done</button>';
+        // Only show color squares for old-style items (not ProseMirror)
+        if (!isProseMirror) {
+            const item = data?.files?.[fileIndex]?.items?.[itemIndex];
+            const current = item?.highlight || 'none';
+            const colors = [
+                { id: 'yellow', label: 'Yellow' },
+                { id: 'green', label: 'Green' },
+                { id: 'blue', label: 'Blue' },
+                { id: 'pink', label: 'Pink' },
+                { id: 'none', label: 'Clear' }
+            ];
+
+            html += '<div class="color-row">';
+            colors.forEach(color => {
+                const activeClass = color.id === current ? ' active' : '';
+                html += `<button type="button" class="color-square${activeClass}" data-color="${color.id}" title="${color.label}">
+                    <span class="highlight-swatch highlight-${color.id}"></span>
+                </button>`;
+            });
+            html += '</div>';
+        }
+
+        // Action buttons
         html += '<button type="button" class="menu-action-btn" data-action="indent">Indent</button>';
         html += '<button type="button" class="menu-action-btn" data-action="outdent">Outdent</button>';
         html += '<button type="button" class="menu-action-btn" data-action="toggle">Toggle</button>';

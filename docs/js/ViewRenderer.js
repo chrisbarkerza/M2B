@@ -91,7 +91,9 @@ class ViewRenderer {
 
                 // Update item count in header
                 this.updateItemCount(viewName, fileIndex);
-            }
+            },
+            viewName,
+            fileIndex
         );
     }
 

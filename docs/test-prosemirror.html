@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProseMirror Context Menu Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>ProseMirror Context Menu Test</h1>
+
+    <div class="test-section">
+        <div class="test-header">Test 1: Long-press on Item Shows Context Menu</div>
+        <div class="instructions">
+            <strong>Instructions:</strong> Long-press (500ms) on any task item below. You should see a context menu with:
+            <ul>
+                <li>Indent button</li>
+                <li>Outdent button</li>
+                <li>Toggle button</li>
+                <li>Delete button (red)</li>
+            </ul>
+            Note: No color squares should appear (ProseMirror mode).
+        </div>
+        <div id="test1-editor"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">Test 2: Context Menu Actions Work</div>
+        <div class="instructions">
+            <strong>Instructions:</strong>
+            <ol>
+                <li>Long-press on the first item</li>
+                <li>Click "Indent" - item should move right</li>
+                <li>Click "Outdent" - item should move left</li>
+                <li>Click "Toggle" - item should change type</li>
+                <li>Click "Delete" - item should be removed</li>
+            </ol>
+        </div>
+        <div id="test2-editor"></div>
+        <div id="test2-status" class="status" style="display:none;"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-header">Test 3: File Header Context Menu</div>
+        <div class="instructions">
+            <strong>Instructions:</strong> This would normally be in an accordion view. For now, verify that the context menu code is properly integrated in the main app.
+        </div>
+    </div>
+
+    <!-- Load ProseMirror and dependencies -->
+    <script src="js/prosemirror.min.js"></script>
+    <script src="js/AppState.js"></script>
+    <script src="js/ProseMirrorSetup.js"></script>
+    <script src="js/HighlightMenu.js"></script>
+    <script src="js/ItemActions.js"></script>
+
+    <script>
+        // Initialize AppState for testing
+        if (!window.AppState) {
+            window.AppState = {
+                data: {
+                    test: {
+                        files: []
+                    }
+                }
+            };
+        }
+
+        // Mock UI for toast messages
+        if (!window.UI) {
+            window.UI = {
+                showToast: (message, type) => {
+                    console.log(`[${type.toUpperCase()}] ${message}`);
+                    const status = document.getElementById('test2-status');
+                    if (status) {
+                        status.textContent = message;
+                        status.className = 'status ' + (type === 'success' ? 'success' : 'error');
+                        status.style.display = 'block';
+                    }
+                }
+            };
+        }
+
+        // Test 1: Create editor with sample tasks
+        const test1Doc = {
+            type: 'doc',
+            content: [
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'First task - long-press me!' }]
+                        }
+                    ]
+                },
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'Second task - try me too!' }]
+                        }
+                    ]
+                },
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'Third task - context menu should appear' }]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const test1Container = document.getElementById('test1-editor');
+        const test1View = ProseMirrorSetup.createEditor(
+            test1Container,
+            test1Doc,
+            (newDoc) => {
+                console.log('Test 1 document updated:', newDoc);
+            },
+            'test',
+            0
+        );
+
+        // Store in mock AppState
+        AppState.data.test.files[0] = {
+            name: 'Test File 1',
+            path: 'test/file1.json',
+            docJSON: test1Doc,
+            editorView: test1View,
+            expanded: true
+        };
+
+        // Test 2: Create editor for action testing
+        const test2Doc = {
+            type: 'doc',
+            content: [
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'Item to test indent/outdent' }]
+                        }
+                    ]
+                },
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'Item to test toggle' }]
+                        }
+                    ]
+                },
+                {
+                    type: 'list',
+                    attrs: { kind: 'task', checked: false, collapsed: null, order: null },
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: 'Item to test delete' }]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const test2Container = document.getElementById('test2-editor');
+        const test2View = ProseMirrorSetup.createEditor(
+            test2Container,
+            test2Doc,
+            (newDoc) => {
+                console.log('Test 2 document updated:', newDoc);
+            },
+            'test',
+            1
+        );
+
+        // Store in mock AppState
+        AppState.data.test.files[1] = {
+            name: 'Test File 2',
+            path: 'test/file2.json',
+            docJSON: test2Doc,
+            editorView: test2View,
+            expanded: true
+        };
+
+        console.log('✅ Test page loaded successfully');
+        console.log('📝 Long-press any task item to test the context menu');
+    </script>
+</body>
+</html>

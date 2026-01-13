@@ -4,7 +4,6 @@
   "description": "Your AI-powered Second Brain for capturing thoughts, tasks, and ideas",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#4A90E2",
