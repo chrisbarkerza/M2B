@@ -68,6 +68,16 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    const safeCachePut = (cache, requestToCache, response) => {
+        if (!response || !response.ok || response.bodyUsed) return;
+
+        try {
+            cache.put(requestToCache, response.clone());
+        } catch (error) {
+            console.warn('Service Worker: Skipping cache update', error);
+        }
+    };
+
     // Cache-first strategy for app assets
     event.respondWith(
         caches.match(request)
@@ -78,7 +88,7 @@ self.addEventListener('fetch', event => {
                         .then(response => {
                             // Update cache with new version
                             caches.open(CACHE_VERSION)
-                                .then(cache => cache.put(request, response.clone()));
+                                .then(cache => safeCachePut(cache, request, response));
                             return response;
                         })
                         .catch(() => cached); // Fallback to cached on network error
@@ -92,7 +102,7 @@ self.addEventListener('fetch', event => {
                         // Cache the new resource
                         if (response.ok) {
                             caches.open(CACHE_VERSION)
-                                .then(cache => cache.put(request, response.clone()));
+                                .then(cache => safeCachePut(cache, request, response));
                         }
                         return response;
                     })
