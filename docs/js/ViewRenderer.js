@@ -29,9 +29,7 @@ class ViewRenderer {
         data.files.forEach((file, fileIndex) => {
             const expandedClass = file.expanded ? 'expanded' : '';
             const itemCount = file.items.filter(i => !i.checked).length;
-            const fileHighlightClass = window.FileExplorer && FileExplorer.getFileHighlightClass
-                ? FileExplorer.getFileHighlightClass(file.path)
-                : '';
+            const fileHighlightClass = file.highlight ? ` highlight-${file.highlight}` : '';
 
             html += `<div class="accordion-item ${expandedClass}${fileHighlightClass}" data-file-index="${fileIndex}" data-file-path="${file.path}">`;
             html += `<div class="accordion-header" data-view="${viewName}" data-file-index="${fileIndex}" tabindex="0">`;
@@ -412,10 +410,6 @@ class ViewRenderer {
 
             await LocalStorageManager.saveFile(donePath, doneContent, true, doneFile ? doneFile.githubSHA : null);
             await LocalStorageManager.deleteFile(path);
-
-            if (window.FileExplorer && FileExplorer.applyFileHighlight) {
-                FileExplorer.applyFileHighlight(path, 'none');
-            }
 
             if (context) {
                 context.data.files.splice(context.fileIndex, 1);

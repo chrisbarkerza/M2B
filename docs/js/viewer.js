@@ -88,6 +88,7 @@ const Viewer = {
                     path: file.path,
                     id: metadata.id,
                     orderKey: metadata.order,
+                    highlight: metadata.highlight,
                     items,
                     expanded: false
                 });

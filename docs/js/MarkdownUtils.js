@@ -8,9 +8,11 @@ class MarkdownUtils {
         const head = markdown.split('\n').slice(0, 5).join('\n');
         const idMatch = head.match(/<!--\s*id:\s*([A-Za-z0-9-]+)\s*-->/);
         const orderMatch = head.match(/<!--\s*order:\s*([A-Za-z0-9-]+)\s*-->/);
+        const highlightMatch = head.match(/<!--\s*hl:\s*([A-Za-z]+)\s*-->/);
         return {
             id: idMatch ? idMatch[1] : null,
-            order: orderMatch ? orderMatch[1] : null
+            order: orderMatch ? orderMatch[1] : null,
+            highlight: highlightMatch ? highlightMatch[1].toLowerCase() : null
         };
     }
 
@@ -42,6 +44,10 @@ class MarkdownUtils {
             }
         }
 
+        if (value === null || value === undefined) {
+            return lines.join('\n');
+        }
+
         const insertAt = Math.min(Math.max(preferredIndex, 0), lines.length);
         lines.splice(insertAt, 0, `<!-- ${key}:${value} -->`);
         return lines.join('\n');
@@ -51,6 +57,14 @@ class MarkdownUtils {
         const metadata = this.extractHeaderMetadata(markdown);
         const preferredIndex = metadata.id ? 1 : 0;
         return this.upsertHeaderComment(markdown, 'order', orderKey, preferredIndex);
+    }
+
+    static setFileHighlight(markdown, highlight) {
+        const metadata = this.extractHeaderMetadata(markdown);
+        let preferredIndex = 0;
+        if (metadata.id) preferredIndex += 1;
+        if (metadata.order) preferredIndex += 1;
+        return this.upsertHeaderComment(markdown, 'hl', highlight, preferredIndex);
     }
 
     static generateOrderKeyBetween(prevKey, nextKey) {

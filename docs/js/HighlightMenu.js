@@ -185,7 +185,7 @@ class HighlightMenu {
         const menu = this.ensureHighlightMenu();
         const resolved = viewName && Number.isInteger(fileIndex) ? { viewName, fileIndex } : this.resolveFileContext(path);
         const current = window.FileExplorer && FileExplorer.getFileHighlight
-            ? FileExplorer.getFileHighlight(path) || 'none'
+            ? FileExplorer.getFileHighlight(path, resolved ? resolved.viewName : null, resolved ? resolved.fileIndex : null) || 'none'
             : 'none';
 
         let html = this.buildMenuHeader('File');

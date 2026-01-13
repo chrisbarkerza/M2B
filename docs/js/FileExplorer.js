@@ -147,6 +147,20 @@ class FileExplorer {
             const allResults = await getAllFiles('md');
             const flatResults = allResults.flat().filter(r => r.files && r.files.length > 0);
 
+            const highlightMap = {};
+            try {
+                const localFiles = await LocalStorageManager.getAllFiles();
+                localFiles.forEach(file => {
+                    const metadata = MarkdownUtils.extractHeaderMetadata(file.content || '');
+                    if (metadata.highlight) {
+                        highlightMap[file.path] = metadata.highlight;
+                    }
+                });
+            } catch (error) {
+                console.warn('Unable to read local file highlights', error);
+            }
+            this.fileHighlightCache = highlightMap;
+
             let html = '<div class="file-tree-list">';
 
             flatResults.forEach(dir => {
@@ -155,7 +169,7 @@ class FileExplorer {
                 html += `<ul class="file-tree-items">`;
 
                 dir.files.forEach(file => {
-                    const highlightClass = this.getFileHighlightClass(file.path);
+                    const highlightClass = highlightMap[file.path] ? ` highlight-${highlightMap[file.path]}` : '';
                     html += `
                         <li class="file-tree-item${highlightClass}" data-path="${file.path}" data-name="${file.name}">
                             <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -554,59 +568,82 @@ class FileExplorer {
         });
     }
 
-    static getFileHighlights() {
-        try {
-            return JSON.parse(localStorage.getItem('file_highlights') || '{}');
-        } catch (error) {
-            return {};
-        }
-    }
-
-    static saveFileHighlights(highlights) {
-        localStorage.setItem('file_highlights', JSON.stringify(highlights));
-    }
-
     static moveFileHighlight(oldPath, newPath) {
         if (!oldPath || !newPath || oldPath === newPath) return;
-        const highlights = this.getFileHighlights();
-        if (!highlights[oldPath]) return;
-        highlights[newPath] = highlights[oldPath];
-        delete highlights[oldPath];
-        this.saveFileHighlights(highlights);
+        if (!this.fileHighlightCache || !this.fileHighlightCache[oldPath]) return;
+        this.fileHighlightCache[newPath] = this.fileHighlightCache[oldPath];
+        delete this.fileHighlightCache[oldPath];
     }
 
-    static getFileHighlight(path) {
-        const highlights = this.getFileHighlights();
-        return highlights[path] || null;
+    static getFileHighlight(path, viewName = null, fileIndex = null) {
+        if (viewName && Number.isInteger(fileIndex)) {
+            const data = AppState.data[viewName];
+            const file = data?.files?.[fileIndex];
+            if (file && file.path === path) {
+                return file.highlight || null;
+            }
+        }
+        return this.fileHighlightCache && this.fileHighlightCache[path]
+            ? this.fileHighlightCache[path]
+            : null;
     }
 
-    static getFileHighlightClass(path) {
-        const highlight = this.getFileHighlight(path);
+    static getFileHighlightClass(path, viewName = null, fileIndex = null) {
+        const highlight = this.getFileHighlight(path, viewName, fileIndex);
         return highlight ? ` highlight-${highlight}` : '';
     }
 
-    static applyFileHighlight(path, color) {
-        const highlights = this.getFileHighlights();
-        if (color === 'none') {
-            delete highlights[path];
-        } else {
-            highlights[path] = color;
+    static async applyFileHighlight(path, color) {
+        if (!path) return;
+        const highlight = color === 'none' ? null : color;
+        let localFile = await LocalStorageManager.getFile(path);
+
+        if (!localFile) {
+            try {
+                const api = new GitHubAPI(AppState.token, AppState.repo);
+                const content = await api.getFile(path);
+                localFile = { content, githubSHA: null };
+            } catch (error) {
+                if (window.UI && UI.showToast) {
+                    UI.showToast('Unable to load file for highlight', 'error');
+                }
+                return;
+            }
         }
-        this.saveFileHighlights(highlights);
+
+        const currentHighlight = MarkdownUtils.extractHeaderMetadata(localFile.content || '').highlight;
+        const updatedContent = MarkdownUtils.setFileHighlight(localFile.content || '', highlight);
+        if (currentHighlight !== highlight) {
+            await FileUpdateManager.updateSourceFile(path, updatedContent, 'Update file highlight', null);
+        }
+
+        if (!this.fileHighlightCache) this.fileHighlightCache = {};
+        if (highlight) {
+            this.fileHighlightCache[path] = highlight;
+        } else {
+            delete this.fileHighlightCache[path];
+        }
 
         const itemEl = document.querySelector(`.file-tree-item[data-path="${path}"]`);
         if (itemEl) {
             itemEl.classList.remove('highlight-yellow', 'highlight-green', 'highlight-blue', 'highlight-pink');
-            if (color !== 'none') {
-                itemEl.classList.add(`highlight-${color}`);
+            if (highlight) {
+                itemEl.classList.add(`highlight-${highlight}`);
             }
         }
 
         const accordionEl = document.querySelector(`.accordion-item[data-file-path="${path}"]`);
         if (accordionEl) {
             accordionEl.classList.remove('highlight-yellow', 'highlight-green', 'highlight-blue', 'highlight-pink');
-            if (color !== 'none') {
-                accordionEl.classList.add(`highlight-${color}`);
+            if (highlight) {
+                accordionEl.classList.add(`highlight-${highlight}`);
+            }
+        }
+
+        if (window.ViewRenderer && ViewRenderer.findFileContextByPath) {
+            const context = ViewRenderer.findFileContextByPath(path);
+            if (context && context.file) {
+                context.file.highlight = highlight;
             }
         }
     }

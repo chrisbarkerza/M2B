@@ -1,0 +1,5 @@
+[notifications]
+sound = true
+only_on_long_runs_ms = 10000  # Only beep if the task took longer than 10 seconds
+success_tone = "default"
+error_tone = "default"

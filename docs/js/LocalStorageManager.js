@@ -312,41 +312,6 @@ class LocalStorageManager {
         });
     }
 
-    /**
-     * Export all data as JSON (for backup)
-     * @returns {Promise<string>}
-     */
-    static async exportData() {
-        const allFiles = await this.getAllFiles();
-        return JSON.stringify({
-            version: this.DB_VERSION,
-            exportDate: new Date().toISOString(),
-            files: allFiles
-        }, null, 2);
-    }
-
-    /**
-     * Import data from JSON (for restore)
-     * @param {string} jsonData - JSON string from exportData()
-     * @returns {Promise<void>}
-     */
-    static async importData(jsonData) {
-        const data = JSON.parse(jsonData);
-        if (!data.files || !Array.isArray(data.files)) {
-            throw new Error('Invalid import data format');
-        }
-
-        const store = await this.getStore('readwrite');
-        const promises = data.files.map(file => {
-            return new Promise((resolve, reject) => {
-                const request = store.put(file);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        });
-
-        return Promise.all(promises);
-    }
 }
 
 // Expose globally
