@@ -112,37 +112,6 @@ class UI {
             }
         });
 
-        document.getElementById('clearCacheBtn').addEventListener('click', () => {
-            if (confirm('Clear all cached data?')) {
-                AppState.data = {
-                    tasks: null,
-                    projects: null,
-                    notes: null,
-                    shopping: null,
-                    ideas: null,
-                    people: null
-                };
-                this.showToast('Cache cleared', 'success');
-            }
-        });
-
-        // Local storage management buttons
-        const clearLocalStorageBtn = document.getElementById('clearLocalStorageBtn');
-        if (clearLocalStorageBtn) {
-            clearLocalStorageBtn.addEventListener('click', async () => {
-                if (confirm('WARNING: This will delete ALL local files. Make sure everything is synced to GitHub first. Continue?')) {
-                    try {
-                        await LocalStorageManager.clearAll();
-                        this.showToast('Local storage cleared', 'success');
-                        await this.updateSyncBadge();
-                        this.updateStorageStatus();
-                    } catch (error) {
-                        this.showToast('Failed to clear storage: ' + error.message, 'error');
-                    }
-                }
-            });
-        }
-
         const forceResyncBtn = document.getElementById('forceResyncBtn');
         if (forceResyncBtn) {
             forceResyncBtn.addEventListener('click', async () => {
@@ -171,64 +140,24 @@ class UI {
                 }
             });
         }
-
-        const exportDataBtn = document.getElementById('exportDataBtn');
-        if (exportDataBtn) {
-            exportDataBtn.addEventListener('click', async () => {
-                try {
-                    const jsonData = await LocalStorageManager.exportData();
-                    const blob = new Blob([jsonData], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `m2b-backup-${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    this.showToast('Data exported successfully', 'success');
-                } catch (error) {
-                    this.showToast('Export failed: ' + error.message, 'error');
-                }
-            });
-        }
-
-        const importDataBtn = document.getElementById('importDataBtn');
-        const importDataFile = document.getElementById('importDataFile');
-        if (importDataBtn && importDataFile) {
-            importDataBtn.addEventListener('click', () => {
-                importDataFile.click();
-            });
-
-            importDataFile.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+        const forceReloadBtn = document.getElementById('forceReloadBtn');
+        if (forceReloadBtn) {
+            forceReloadBtn.addEventListener('click', async () => {
+                forceReloadBtn.disabled = true;
+                forceReloadBtn.textContent = 'Reloading...';
 
                 try {
-                    const reader = new FileReader();
-                    reader.onload = async (event) => {
-                        try {
-                            const jsonData = event.target.result;
-                            await LocalStorageManager.importData(jsonData);
-                            this.showToast('Data imported successfully', 'success');
-                            await this.updateSyncBadge();
-                            this.updateStorageStatus();
-
-                            // Reload current view
-                            if (window.Viewer && Viewer.isView(AppState.currentView)) {
-                                await Viewer.load(AppState.currentView);
-                            }
-                        } catch (error) {
-                            this.showToast('Import failed: ' + error.message, 'error');
-                        }
-                    };
-                    reader.readAsText(file);
+                    if (navigator.serviceWorker) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map(registration => registration.update()));
+                    }
                 } catch (error) {
-                    this.showToast('Failed to read file: ' + error.message, 'error');
+                    this.showToast('Reload failed: ' + error.message, 'error');
                 }
 
-                // Reset file input
-                importDataFile.value = '';
+                const url = new URL(window.location.href);
+                url.searchParams.set('reload', Date.now().toString());
+                window.location.replace(url.toString());
             });
         }
     }

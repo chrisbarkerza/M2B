@@ -300,6 +300,17 @@
 
                 <div class="modal-body">
                     <div class="setting-group">
+                        <label for="githubRepo">Repository</label>
+                        <input
+                            type="text"
+                            id="githubRepo"
+                            placeholder="username/M2B-Data"
+                            value="chrisbarkerza/M2B-Data"
+                        >
+                        <p class="help-text">Default: chrisbarkerza/M2B-Data (your private data repo)</p>
+                    </div>
+
+                    <div class="setting-group">
                         <label for="githubToken">GitHub Token</label>
                         <input
                             type="password"
@@ -316,17 +327,6 @@
                         </p>
                     </div>
 
-                    <div class="setting-group">
-                        <label for="githubRepo">Repository</label>
-                        <input
-                            type="text"
-                            id="githubRepo"
-                            placeholder="username/M2B-Data"
-                            value="chrisbarkerza/M2B-Data"
-                        >
-                        <p class="help-text">Default: chrisbarkerza/M2B-Data (your private data repo)</p>
-                    </div>
-
                     <div class="setting-group setting-actions">
                         <button id="testConnectionBtn" class="btn btn-secondary">Test Connection</button>
                         <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
@@ -337,9 +337,6 @@
                         <p>Last synced: <span id="lastSync">Never</span></p>
                         <p id="queueStatus" style="display: none;">Pending changes: <span id="queueCount">0</span></p>
                         <p>Storage status: <span id="storageStatus">Loading...</span></p>
-                        <div class="setting-actions">
-                            <button id="clearCacheBtn" class="btn btn-danger">Clear Cache</button>
-                        </div>
                     </div>
 
                     <div class="setting-group">
@@ -348,14 +345,18 @@
                             Manage your local file storage and sync settings.
                         </p>
                         <div class="setting-actions">
-                            <button id="clearLocalStorageBtn" class="btn btn-danger">Clear Local Storage</button>
                             <button id="forceResyncBtn" class="btn btn-secondary">Force Re-sync from GitHub</button>
                         </div>
-                        <div class="setting-actions" style="margin-top: 8px;">
-                            <button id="exportDataBtn" class="btn btn-secondary">Export Local Data</button>
-                            <button id="importDataBtn" class="btn btn-secondary">Import Local Data</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <h3>App Refresh</h3>
+                        <p style="margin-bottom: 12px; color: var(--text-light);">
+                            Force a full reload to pull fresh assets on mobile.
+                        </p>
+                        <div class="setting-actions">
+                            <button id="forceReloadBtn" class="btn btn-secondary">Force Reload App</button>
                         </div>
-                        <input type="file" id="importDataFile" accept=".json" style="display: none;">
                     </div>
                 </div>
             </div>
