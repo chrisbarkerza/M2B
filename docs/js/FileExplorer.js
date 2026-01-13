@@ -204,13 +204,19 @@ class FileExplorer {
     /**
      * Create new file
      * @param {string} directory - Directory path
-     * @param {string} fileName - File name (without .md)
+     * @param {string} fileName - File name (without extension)
      * @param {string} viewName - View name for reload
      */
     static async createNewFile(directory, fileName, viewName) {
         const api = new GitHubAPI(AppState.token, AppState.repo);
-        const filePath = `${directory}/${fileName}.md`;
-        const content = `# ${fileName}\n\n- First item\n`;
+        const filePath = `json/${directory}/${fileName}.json`;
+
+        // Create empty ProseMirror document
+        const emptyDoc = {
+            type: 'doc',
+            content: []
+        };
+        const content = JSON.stringify(emptyDoc, null, 2);
 
         try {
             if (AppState.isOnline) {

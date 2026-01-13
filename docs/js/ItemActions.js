@@ -299,6 +299,145 @@ class ItemActions {
             }
         }, 50);
     }
+
+    /**
+     * Toggle item to/from toggle-list type (ProseMirror)
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     * @param {number} itemIndex - Item index (not used for ProseMirror)
+     */
+    static toggleItem(viewName, fileIndex, itemIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+        if (!file.editorView) return;
+
+        // Execute toggle list command
+        const toggleCommand = ProseMirrorSetup.commands.toggleList();
+        if (toggleCommand(file.editorView.state, file.editorView.dispatch)) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('Item toggled', 'success');
+            }
+        }
+    }
+
+    /**
+     * Delete item and its children (ProseMirror)
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     * @param {number} itemIndex - Item index (not used for ProseMirror)
+     */
+    static deleteItem(viewName, fileIndex, itemIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+        if (!file.editorView) return;
+
+        const { state, dispatch } = file.editorView;
+        const { selection } = state;
+        const { $from, $to } = selection;
+
+        // Find the list node at the current selection
+        let listNode = null;
+        let listPos = null;
+
+        state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+            if (node.type.name === 'list' && !listNode) {
+                listNode = node;
+                listPos = pos;
+                return false;
+            }
+        });
+
+        if (listNode && listPos !== null) {
+            const tr = state.tr.delete(listPos, listPos + listNode.nodeSize);
+            dispatch(tr);
+            if (window.UI && UI.showToast) {
+                UI.showToast('Item deleted', 'success');
+            }
+        }
+    }
+
+    /**
+     * Apply highlight color to file (stored in AppState)
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     * @param {string} color - Color name or 'none'
+     */
+    static applyFileHighlight(viewName, fileIndex, color) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+        file.highlight = color === 'none' ? null : color;
+
+        // Re-render to apply color
+        ViewRenderer.render(viewName);
+
+        if (window.UI && UI.showToast) {
+            UI.showToast('File color updated', 'success');
+        }
+    }
+
+    /**
+     * Toggle file expanded state
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     */
+    static toggleFileExpanded(viewName, fileIndex) {
+        // Just toggle the accordion
+        ViewRenderer.toggleAccordion(viewName, fileIndex);
+
+        if (window.UI && UI.showToast) {
+            UI.showToast('File toggle updated', 'success');
+        }
+    }
+
+    /**
+     * Delete file
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     */
+    static async deleteFile(viewName, fileIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+
+        const file = data.files[fileIndex];
+
+        // Confirm deletion
+        if (!confirm(`Delete file "${file.name}"? This cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const api = new GitHubAPI(AppState.token, AppState.repo);
+            await api.deleteFile(file.path, `Delete file: ${file.name}`);
+
+            // Remove from local storage
+            await LocalStorageManager.deleteFile(file.path);
+
+            // Remove from data
+            data.files.splice(fileIndex, 1);
+
+            // Re-render
+            ViewRenderer.render(viewName);
+
+            if (window.UI && UI.showToast) {
+                UI.showToast('File deleted', 'success');
+            }
+
+            // Update sync badge
+            if (window.UI && UI.updateSyncBadge) {
+                UI.updateSyncBadge();
+            }
+        } catch (error) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('Failed to delete file: ' + error.message, 'error');
+            }
+        }
+    }
 }
 
 // Expose globally

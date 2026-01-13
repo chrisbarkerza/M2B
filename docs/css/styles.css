@@ -704,6 +704,12 @@ body {
     color: white;
 }
 
+.menu-action-delete:hover,
+.menu-action-delete:active {
+    background: var(--danger-color);
+    color: white;
+}
+
 .highlight-menu-btn {
     display: flex;
     align-items: center;
@@ -1470,6 +1476,25 @@ body {
     transition: max-height 0.5s ease-in;
 }
 
+/* File drag styles */
+.accordion-item.dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+}
+
+.file-drag-placeholder {
+    background: var(--primary-color);
+    opacity: 0.2;
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--radius-sm);
+    margin: 4px 0;
+}
+
+.accordion-header.long-press {
+    background: var(--bg-color);
+    box-shadow: var(--shadow);
+}
+
 .accordion-actions {
     display: flex;
     gap: 4px;
@@ -1875,14 +1900,6 @@ body {
 .ProseMirror [data-list-kind="task"][data-checked="true"] {
     opacity: 0.6;
     text-decoration: line-through;
-}
-
-/* Bullet list */
-.ProseMirror [data-list-kind="bullet"]::before {
-    content: '⦿';
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text-light);
 }
 
 /* Ordered list */

@@ -54,6 +54,17 @@ class GitHubAPI {
         });
     }
 
+    async deleteFile(path, message) {
+        // Get current file to get SHA
+        const current = await this.request(`/contents/${path}`);
+        const sha = current.sha;
+
+        return this.request(`/contents/${path}`, 'DELETE', {
+            message,
+            sha
+        });
+    }
+
     async createIssue(title, body) {
         return this.request('/issues', 'POST', {
             title,
