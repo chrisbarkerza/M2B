@@ -207,12 +207,14 @@ class DragReorder {
             // Get content from local storage
             const localFile = await LocalStorageManager.getFile(file.path);
             const sourceContent = localFile ? localFile.content : '';
-            const newSourceContent = ChecklistParser.reorderUncheckedLines(sourceContent, uncheckedItems);
+            let newSourceContent = ChecklistParser.reorderUncheckedLines(sourceContent, uncheckedItems);
+            const normalized = ChecklistParser.normalizeCollapseStates(newSourceContent);
+            newSourceContent = normalized.content;
 
             const itemCount = movedItems.length;
             const message = itemCount > 1 ? `Reordered ${itemCount} items` : 'Reordered';
             await this.updateSourceFile(file.path, newSourceContent, `Reorder items in ${file.name}`, message);
-            file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
+            file.items = normalized.items;
             ViewRenderer.render(viewName);
 
             // Restore focus to the moved item at its new position
@@ -300,7 +302,11 @@ class DragReorder {
                 }
             }
 
-            const newToContent = newToLines.join('\n');
+            let newToContent = newToLines.join('\n');
+            const normalizedFrom = ChecklistParser.normalizeCollapseStates(newFromContent);
+            const normalizedTo = ChecklistParser.normalizeCollapseStates(newToContent);
+            newFromContent = normalizedFrom.content;
+            newToContent = normalizedTo.content;
 
             // Save both files
             await LocalStorageManager.saveFile(fromFile.path, newFromContent, true);
@@ -318,8 +324,8 @@ class DragReorder {
             }
 
             // Refresh items from new content
-            fromFile.items = ChecklistParser.parseCheckboxItems(newFromContent);
-            toFile.items = ChecklistParser.parseCheckboxItems(newToContent);
+            fromFile.items = normalizedFrom.items;
+            toFile.items = normalizedTo.items;
             ViewRenderer.render(viewName);
         } catch (error) {
             if (window.UI && UI.showToast) {

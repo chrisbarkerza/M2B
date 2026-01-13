@@ -259,6 +259,7 @@ class GestureHandler {
         if (!state.swipeTriggered) {
             const clickedBullet = state.startedOnBullet || Boolean(event.target.closest('.bullet'));
             if (clickedBullet) {
+                ItemActions.toggleCollapseState(state.viewName, state.fileIndex, state.itemIndex);
                 this.resetGestureState();
                 return;
             }

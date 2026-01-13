@@ -4,6 +4,9 @@
  * Dependencies: AppState, GitHubAPI, MarkdownUtils
  */
 class FileExplorer {
+    static fileGestureState = null;
+    static ignoreFileClickUntil = 0;
+
     /**
      * Show file viewer modal
      */
@@ -81,8 +84,9 @@ class FileExplorer {
                 html += `<ul class="file-tree-items">`;
 
                 dir.files.forEach(file => {
+                    const highlightClass = this.getFileHighlightClass(file.path);
                     html += `
-                        <li class="file-tree-item" onclick="FileExplorer.viewFile('${file.path}', '${file.name}')">
+                        <li class="file-tree-item${highlightClass}" data-path="${file.path}" data-name="${file.name}">
                             <svg class="icon icon-file" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
                                 <polyline points="14 2 14 8 20 8" />
@@ -97,6 +101,7 @@ class FileExplorer {
 
             html += '</div>';
             fileTree.innerHTML = html;
+            this.bindFileTreeInteractions(fileTree);
         } catch (error) {
             fileTree.innerHTML = `<div class="error">Error loading files: ${error.message}</div>`;
         }
@@ -210,7 +215,8 @@ class FileExplorer {
     static async createNewFile(directory, fileName, viewName) {
         const api = new GitHubAPI(AppState.token, AppState.repo);
         const filePath = `${directory}/${fileName}.md`;
-        const content = `# ${fileName}\n\n- First item\n`;
+        const fileId = window.MarkdownUtils ? MarkdownUtils.generateFileId() : `id-${Date.now()}`;
+        const content = `<!-- id:${fileId} -->\n# ${fileName}\n\n- First item\n`;
 
         try {
             if (AppState.isOnline) {
@@ -244,6 +250,146 @@ class FileExplorer {
 
         const directory = ViewerConfig.config[viewName].directory;
         this.createNewFile(directory, fileName, viewName);
+    }
+
+    static bindFileTreeInteractions(fileTree) {
+        if (fileTree.dataset.fileTreeBound) return;
+        fileTree.dataset.fileTreeBound = 'true';
+
+        fileTree.addEventListener('contextmenu', (event) => {
+            const itemEl = event.target.closest('.file-tree-item');
+            if (!itemEl) return;
+            event.preventDefault();
+            if (window.HighlightMenu && HighlightMenu.showFileMenu) {
+                HighlightMenu.showFileMenu(itemEl, itemEl.dataset.path);
+            }
+            this.ignoreFileClickUntil = Date.now() + 400;
+        });
+
+        fileTree.addEventListener('click', (event) => {
+            if (Date.now() < this.ignoreFileClickUntil) return;
+            const itemEl = event.target.closest('.file-tree-item');
+            if (!itemEl) return;
+            const path = itemEl.dataset.path;
+            const name = itemEl.dataset.name;
+            if (!path || !name) return;
+            this.viewFile(path, name);
+        });
+
+        fileTree.addEventListener('pointerdown', (event) => {
+            const itemEl = event.target.closest('.file-tree-item');
+            if (!itemEl) return;
+
+            if (window.HighlightMenu && HighlightMenu.hideHighlightMenu) {
+                HighlightMenu.hideHighlightMenu();
+            }
+
+            const gestureState = {
+                pointerId: event.pointerId,
+                itemEl,
+                startX: event.clientX,
+                startY: event.clientY,
+                longPressTriggered: false,
+                longPressTimer: null
+            };
+
+            gestureState.longPressTimer = window.setTimeout(() => {
+                gestureState.longPressTriggered = true;
+                if (window.HighlightMenu && HighlightMenu.showFileMenu) {
+                    HighlightMenu.showFileMenu(itemEl, itemEl.dataset.path);
+                }
+            }, 500);
+
+            if (itemEl.setPointerCapture) {
+                itemEl.setPointerCapture(event.pointerId);
+            }
+            this.fileGestureState = gestureState;
+        });
+
+        fileTree.addEventListener('pointermove', (event) => {
+            const state = this.fileGestureState;
+            if (!state || state.pointerId !== event.pointerId) return;
+            const dx = event.clientX - state.startX;
+            const dy = event.clientY - state.startY;
+            if (!state.longPressTriggered && Math.abs(dx) + Math.abs(dy) > 24) {
+                window.clearTimeout(state.longPressTimer);
+                state.longPressTimer = null;
+            }
+        });
+
+        fileTree.addEventListener('pointerup', (event) => {
+            const state = this.fileGestureState;
+            if (!state || state.pointerId !== event.pointerId) return;
+            window.clearTimeout(state.longPressTimer);
+            if (state.longPressTriggered) {
+                this.ignoreFileClickUntil = Date.now() + 400;
+            }
+            this.fileGestureState = null;
+        });
+
+        fileTree.addEventListener('pointercancel', (event) => {
+            const state = this.fileGestureState;
+            if (!state || state.pointerId !== event.pointerId) return;
+            window.clearTimeout(state.longPressTimer);
+            this.fileGestureState = null;
+        });
+    }
+
+    static getFileHighlights() {
+        try {
+            return JSON.parse(localStorage.getItem('file_highlights') || '{}');
+        } catch (error) {
+            return {};
+        }
+    }
+
+    static saveFileHighlights(highlights) {
+        localStorage.setItem('file_highlights', JSON.stringify(highlights));
+    }
+
+    static moveFileHighlight(oldPath, newPath) {
+        if (!oldPath || !newPath || oldPath === newPath) return;
+        const highlights = this.getFileHighlights();
+        if (!highlights[oldPath]) return;
+        highlights[newPath] = highlights[oldPath];
+        delete highlights[oldPath];
+        this.saveFileHighlights(highlights);
+    }
+
+    static getFileHighlight(path) {
+        const highlights = this.getFileHighlights();
+        return highlights[path] || null;
+    }
+
+    static getFileHighlightClass(path) {
+        const highlight = this.getFileHighlight(path);
+        return highlight ? ` highlight-${highlight}` : '';
+    }
+
+    static applyFileHighlight(path, color) {
+        const highlights = this.getFileHighlights();
+        if (color === 'none') {
+            delete highlights[path];
+        } else {
+            highlights[path] = color;
+        }
+        this.saveFileHighlights(highlights);
+
+        const itemEl = document.querySelector(`.file-tree-item[data-path="${path}"]`);
+        if (itemEl) {
+            itemEl.classList.remove('highlight-yellow', 'highlight-green', 'highlight-blue', 'highlight-pink');
+            if (color !== 'none') {
+                itemEl.classList.add(`highlight-${color}`);
+            }
+        }
+
+        const accordionEl = document.querySelector(`.accordion-item[data-file-path="${path}"]`);
+        if (accordionEl) {
+            accordionEl.classList.remove('highlight-yellow', 'highlight-green', 'highlight-blue', 'highlight-pink');
+            if (color !== 'none') {
+                accordionEl.classList.add(`highlight-${color}`);
+            }
+        }
     }
 }
 

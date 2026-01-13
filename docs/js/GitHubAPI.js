@@ -54,6 +54,13 @@ class GitHubAPI {
         });
     }
 
+    async deleteFile(path, sha, message) {
+        return this.request(`/contents/${path}`, 'DELETE', {
+            message,
+            sha
+        });
+    }
+
     async createIssue(title, body) {
         return this.request('/issues', 'POST', {
             title,

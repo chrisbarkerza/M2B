@@ -7,7 +7,7 @@ class ChecklistParser {
     /**
      * Parse markdown bullets into item objects
      * @param {string} markdown - Markdown content with bullets
-     * @returns {Array} Array of item objects with text, checked, highlight, indent properties
+     * @returns {Array} Array of item objects with text, checked, highlight, indent, collapseState properties
      */
     static parseCheckboxItems(markdown) {
         const lines = markdown.split('\n');
@@ -22,11 +22,23 @@ class ChecklistParser {
             if (checkboxMatch) {
                 const indent = Math.floor(checkboxMatch[1].length / 2); // 2 spaces per indent
                 const parsed = this.parseHighlight(checkboxMatch[3]);
-                items.push({ text: parsed.text, checked: false, highlight: parsed.highlight, indent });
+                items.push({
+                    text: parsed.text,
+                    checked: false,
+                    highlight: parsed.highlight,
+                    collapseState: parsed.collapseState,
+                    indent
+                });
             } else if (bulletMatch) {
                 const indent = Math.floor(bulletMatch[1].length / 2); // 2 spaces per indent
                 const parsed = this.parseHighlight(bulletMatch[2]);
-                items.push({ text: parsed.text, checked: false, highlight: parsed.highlight, indent });
+                items.push({
+                    text: parsed.text,
+                    checked: false,
+                    highlight: parsed.highlight,
+                    collapseState: parsed.collapseState,
+                    indent
+                });
             }
         });
 
@@ -34,16 +46,32 @@ class ChecklistParser {
     }
 
     /**
-     * Extract highlight color from HTML comment
-     * @param {string} text - Item text that may contain highlight comment
-     * @returns {object} Object with text (without comment) and highlight color
+     * Extract metadata from HTML comments
+     * @param {string} text - Item text that may contain metadata comments
+     * @returns {object} Object with text (without comments), highlight color, collapseState
      */
     static parseHighlight(text) {
-        const match = text.match(/\s*<!--\s*hl:([a-z]+)\s*-->\s*$/i);
-        if (!match) return { text, highlight: null };
+        let remaining = text;
+        let highlight = null;
+        let collapseState = null;
+        const commentRegex = /\s*<!--\s*([a-z:]+)\s*-->\s*$/i;
+        let match = remaining.match(commentRegex);
+
+        while (match) {
+            const token = match[1].toLowerCase();
+            if (token.startsWith('hl:') && !highlight) {
+                highlight = token.slice(3);
+            } else if ((token === 'collapsed' || token === 'expanded') && !collapseState) {
+                collapseState = token;
+            }
+            remaining = remaining.replace(match[0], '').trimEnd();
+            match = remaining.match(commentRegex);
+        }
+
         return {
-            text: text.replace(match[0], '').trim(),
-            highlight: match[1].toLowerCase()
+            text: remaining.trim(),
+            highlight,
+            collapseState
         };
     }
 
@@ -54,8 +82,63 @@ class ChecklistParser {
      */
     static formatItemLine(item) {
         const highlightSuffix = item.highlight ? ` <!-- hl:${item.highlight} -->` : '';
+        const collapseSuffix = item.collapseState ? ` <!-- ${item.collapseState} -->` : '';
         const indent = '  '.repeat(item.indent || 0); // 2 spaces per indent level
-        return `${indent}- ${item.text}${highlightSuffix}`;
+        return `${indent}- ${item.text}${highlightSuffix}${collapseSuffix}`;
+    }
+
+    /**
+     * Ensure items with children have a collapse state, and items without children do not
+     * @param {string} markdown - Markdown content
+     * @param {Array} items - Optional parsed items to reuse
+     * @returns {object} Object with updated content, items, and changed flag
+     */
+    static normalizeCollapseStates(markdown, items) {
+        const parsedItems = items || this.parseCheckboxItems(markdown);
+        let updatedContent = markdown;
+        let changed = false;
+
+        const updatedItems = parsedItems.map((item, index) => {
+            const hasChildren = this.itemHasChildren(parsedItems, index);
+            let collapseState = item.collapseState || null;
+
+            if (hasChildren && !collapseState) {
+                collapseState = 'expanded';
+            } else if (!hasChildren && collapseState) {
+                collapseState = null;
+            }
+
+            if (collapseState !== item.collapseState) {
+                changed = true;
+                const updatedItem = { ...item, collapseState };
+                updatedContent = this.updateCheckboxLineByIndex(updatedContent, index, this.formatItemLine(updatedItem));
+                return updatedItem;
+            }
+
+            return item;
+        });
+
+        return { content: updatedContent, items: updatedItems, changed };
+    }
+
+    /**
+     * Check if an item has children (next items with deeper indent)
+     * @param {Array} items - Array of items
+     * @param {number} itemIndex - Index of current item
+     * @returns {boolean} True if item has children
+     */
+    static itemHasChildren(items, itemIndex) {
+        const current = items[itemIndex];
+        if (!current) return false;
+        const currentIndent = current.indent || 0;
+        for (let i = itemIndex + 1; i < items.length; i++) {
+            const nextIndent = items[i].indent || 0;
+            if (nextIndent <= currentIndent) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     /**

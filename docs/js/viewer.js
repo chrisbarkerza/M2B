@@ -55,14 +55,56 @@ const Viewer = {
             }
 
             // Parse files from local storage using ChecklistParser
-            const filesData = files.map(file => {
-                const items = ChecklistParser.parseCheckboxItems(file.content);
-                return {
+            const filesData = [];
+            for (const file of files) {
+                let content = file.content;
+                const ensured = MarkdownUtils.ensureFileId(content);
+                if (ensured.changed) {
+                    content = ensured.content;
+                    await LocalStorageManager.saveFile(file.path, content, true, file.githubSHA);
+                }
+
+                let items = ChecklistParser.parseCheckboxItems(content);
+                if (items.length === 0) {
+                    const placeholderLine = ChecklistParser.formatItemLine({
+                        text: ' ',
+                        checked: false,
+                        highlight: null,
+                        indent: 0
+                    });
+                    const trimmedContent = content.replace(/\s+$/, '');
+                    content = trimmedContent.length ? `${trimmedContent}\n${placeholderLine}\n` : `${placeholderLine}\n`;
+                    await FileUpdateManager.updateSourceFile(file.path, content, 'Add placeholder item', null);
+                    items = ChecklistParser.parseCheckboxItems(content);
+                }
+                const normalized = ChecklistParser.normalizeCollapseStates(content, items);
+                if (normalized.changed) {
+                    await FileUpdateManager.updateSourceFile(file.path, normalized.content, 'Normalize collapse state', null);
+                    items = normalized.items;
+                }
+                const metadata = MarkdownUtils.extractHeaderMetadata(content);
+                filesData.push({
                     name: file.path.split('/').pop().replace('.md', ''),
                     path: file.path,
-                    items: items,
+                    id: metadata.id,
+                    orderKey: metadata.order,
+                    items,
                     expanded: false
-                };
+                });
+            }
+
+            filesData.sort((a, b) => {
+                const aOrder = a.orderKey;
+                const bOrder = b.orderKey;
+                if (aOrder && bOrder) {
+                    const orderCompare = aOrder.localeCompare(bOrder);
+                    if (orderCompare !== 0) return orderCompare;
+                } else if (aOrder) {
+                    return -1;
+                } else if (bOrder) {
+                    return 1;
+                }
+                return a.name.localeCompare(b.name);
             });
 
             AppState.data[viewName] = { directory: config.directory, files: filesData };

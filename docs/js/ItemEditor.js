@@ -135,10 +135,12 @@ class ItemEditor {
 
             if (insertLineIndex !== -1) {
                 lines.splice(insertLineIndex, 0, newLine);
-                const newSourceContent = lines.join('\n');
+                let newSourceContent = lines.join('\n');
+                const normalized = ChecklistParser.normalizeCollapseStates(newSourceContent);
+                newSourceContent = normalized.content;
 
                 await this.updateSourceFile(file.path, newSourceContent, 'Add new bullet', 'New item added');
-                file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
+                file.items = normalized.items;
                 ViewRenderer.render(viewName);
 
                 // Auto-select the new item for editing

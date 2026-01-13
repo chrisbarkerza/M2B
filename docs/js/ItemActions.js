@@ -136,10 +136,13 @@ class ItemActions {
                 newSourceContent = ChecklistParser.updateCheckboxLineByIndex(newSourceContent, idx, newLine);
             }
 
+            const normalized = ChecklistParser.normalizeCollapseStates(newSourceContent);
+            newSourceContent = normalized.content;
+
             const itemCount = itemsToIndent.length;
             const message = itemCount > 1 ? `Indented ${itemCount} items` : 'Item indented';
             await this.updateSourceFile(file.path, newSourceContent, 'Indent item', message);
-            file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
+            file.items = normalized.items;
             ViewRenderer.render(viewName);
             this.restoreItemFocus(viewName, fileIndex, itemIndex);
         } catch (error) {
@@ -187,10 +190,13 @@ class ItemActions {
                 newSourceContent = ChecklistParser.updateCheckboxLineByIndex(newSourceContent, idx, newLine);
             }
 
+            const normalized = ChecklistParser.normalizeCollapseStates(newSourceContent);
+            newSourceContent = normalized.content;
+
             const itemCount = itemsToOutdent.length;
             const message = itemCount > 1 ? `Outdented ${itemCount} items` : 'Item outdented';
             await this.updateSourceFile(file.path, newSourceContent, 'Outdent item', message);
-            file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
+            file.items = normalized.items;
             ViewRenderer.render(viewName);
             this.restoreItemFocus(viewName, fileIndex, itemIndex);
         } catch (error) {
@@ -232,6 +238,52 @@ class ItemActions {
         } catch (error) {
             if (window.UI && UI.showToast) {
                 UI.showToast('Highlight failed: ' + error.message, 'error');
+            }
+            ViewRenderer.render(viewName);
+        }
+    }
+
+    /**
+     * Toggle collapse state for an item with children
+     * @param {string} viewName - View name
+     * @param {number} fileIndex - File index
+     * @param {number} itemIndex - Item index
+     */
+    static async toggleCollapseState(viewName, fileIndex, itemIndex) {
+        const data = AppState.data[viewName];
+        if (!data || !data.files || !data.files[fileIndex]) return;
+        const file = data.files[fileIndex];
+        const item = file.items[itemIndex];
+        if (!item) return;
+
+        const children = this.getItemChildren(file.items, itemIndex);
+        if (children.length === 0) return;
+
+        let collapseState = item.collapseState || null;
+        if (collapseState === 'collapsed') {
+            collapseState = 'expanded';
+        } else if (collapseState === 'expanded') {
+            collapseState = 'collapsed';
+        } else {
+            collapseState = 'collapsed';
+        }
+
+        const updatedItem = { ...item, collapseState };
+
+        try {
+            const localFile = await LocalStorageManager.getFile(file.path);
+            const sourceContent = localFile ? localFile.content : '';
+
+            const newLine = ChecklistParser.formatItemLine(updatedItem);
+            const newSourceContent = ChecklistParser.updateCheckboxLineByIndex(sourceContent, itemIndex, newLine);
+
+            await this.updateSourceFile(file.path, newSourceContent, 'Toggle collapse', 'Collapse updated');
+            file.items = ChecklistParser.parseCheckboxItems(newSourceContent);
+            ViewRenderer.render(viewName);
+            this.restoreItemFocus(viewName, fileIndex, itemIndex);
+        } catch (error) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('Collapse failed: ' + error.message, 'error');
             }
             ViewRenderer.render(viewName);
         }

@@ -25,6 +25,7 @@ class UI {
         this.setupProjectTabs();
         Navigation.setupMoreMenu();
         this.setupActionButtons();
+        this.disableBrowserContextMenu();
 
         // Initialize local storage and perform migration
         if (AppState.token) {
@@ -63,6 +64,12 @@ class UI {
 
     static setupProjectTabs() {
         // Tabs removed - projects view simplified
+    }
+
+    static disableBrowserContextMenu() {
+        document.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+        });
     }
 
     static setupSettings() {
@@ -330,11 +337,14 @@ class UI {
             // Sync dirty files using SyncManager
             const result = await SyncManager.syncAll();
 
+            // Pull remote updates without overwriting local changes
+            const pullResult = await SyncManager.pullLatestFromGitHub();
+
             // Update sync badge
             await this.updateSyncBadge();
 
             // Reload current view if files were synced
-            if (result.synced > 0 || result.conflicts > 0) {
+            if (result.synced > 0 || result.conflicts > 0 || pullResult.added > 0 || pullResult.updated > 0) {
                 if (window.Viewer && Viewer.isView(AppState.currentView)) {
                     await Viewer.load(AppState.currentView);
                 }

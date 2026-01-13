@@ -7,6 +7,69 @@ class SyncManager {
     static lastSyncTime = null;
     static syncListeners = [];
 
+    static getSyncDirectories(viewName = null) {
+        const viewConfig = viewName && window.ViewerConfig
+            ? ViewerConfig.getConfig(viewName)
+            : null;
+        return viewConfig
+            ? [viewConfig.directory]
+            : ['md/ToDo', 'md/Shopping', 'md/Projects', 'md/Notes', 'md/Ideas', 'md/People'];
+    }
+
+    static async ensureLocalFileIds() {
+        const allFiles = await LocalStorageManager.getAllFiles();
+        for (const file of allFiles) {
+            const ensured = MarkdownUtils.ensureFileId(file.content);
+            if (!ensured.changed) continue;
+            await LocalStorageManager.saveFile(file.path, ensured.content, true, file.githubSHA);
+        }
+    }
+
+    static async buildLocalIdIndex() {
+        const allFiles = await LocalStorageManager.getAllFiles();
+        const byId = {};
+        for (const file of allFiles) {
+            const metadata = MarkdownUtils.extractHeaderMetadata(file.content);
+            if (!metadata.id) continue;
+            byId[metadata.id] = { path: file.path, file };
+        }
+        return byId;
+    }
+
+    static async buildRemoteFileIdIndex(directories) {
+        const api = new GitHubAPI(AppState.token, AppState.repo);
+        const byId = {};
+
+        for (const directory of directories) {
+            try {
+                const contents = await api.request(`/contents/${directory}`, 'GET', null, true);
+                if (!contents) continue;
+
+                const files = contents.filter(item =>
+                    item.type === 'file' && item.name.endsWith('.md')
+                );
+
+                for (const file of files) {
+                    try {
+                        const content = await api.getFile(file.path);
+                        const metadata = MarkdownUtils.extractHeaderMetadata(content);
+                        if (!metadata.id) continue;
+                        if (!byId[metadata.id]) {
+                            byId[metadata.id] = [];
+                        }
+                        byId[metadata.id].push({ path: file.path, sha: file.sha });
+                    } catch (error) {
+                        console.error(`Error reading ${file.path} for ID index:`, error);
+                    }
+                }
+            } catch (error) {
+                console.error(`Error indexing directory ${directory}:`, error);
+            }
+        }
+
+        return byId;
+    }
+
     /**
      * Main sync entry point - syncs all dirty files to GitHub
      * @returns {Promise<Object>} - { synced, conflicts, errors }
@@ -52,6 +115,7 @@ class SyncManager {
      * @returns {Promise<Object>} - { synced, conflicts, errors }
      */
     static async syncDirtyFiles() {
+        await this.ensureLocalFileIds();
         const dirtyFiles = await LocalStorageManager.getDirtyFiles();
 
         if (dirtyFiles.length === 0) {
@@ -68,6 +132,9 @@ class SyncManager {
             conflictFiles: []
         };
 
+        const directories = this.getSyncDirectories();
+        const remoteIdIndex = await this.buildRemoteFileIdIndex(directories);
+
         // Sync each dirty file
         for (let i = 0; i < dirtyFiles.length; i++) {
             const file = dirtyFiles[i];
@@ -78,6 +145,7 @@ class SyncManager {
             });
 
             try {
+                const metadata = MarkdownUtils.extractHeaderMetadata(file.content);
                 const syncResult = await this.pushFile(file.path, file.content, file.githubSHA);
 
                 if (syncResult.conflict) {
@@ -93,6 +161,16 @@ class SyncManager {
                 } else {
                     results.synced++;
                     await LocalStorageManager.markClean(file.path, syncResult.sha);
+                    const remoteMatches = metadata.id ? (remoteIdIndex[metadata.id] || []) : [];
+                    const pathsToDelete = remoteMatches.filter(entry => entry.path !== file.path);
+                    for (const entry of pathsToDelete) {
+                        try {
+                            const api = new GitHubAPI(AppState.token, AppState.repo);
+                            await api.deleteFile(entry.path, entry.sha, `Remove renamed file: ${entry.path}`);
+                        } catch (error) {
+                            console.error(`Failed to delete renamed file ${entry.path}:`, error);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error(`Error syncing ${file.path}:`, error);
@@ -213,6 +291,7 @@ class SyncManager {
             const remoteContent = await api.getFile(path);
             const githubFile = await api.request(`/contents/${path}`);
             await LocalStorageManager.saveFile(path, remoteContent, false, githubFile.sha);
+            await LocalStorageManager.markClean(path, githubFile.sha);
 
             if (window.UI && UI.showToast) {
                 UI.showToast('Conflict resolved: used remote version', 'success');
@@ -231,12 +310,11 @@ class SyncManager {
         const api = new GitHubAPI(AppState.token, AppState.repo);
 
         // Determine which directories to load
-        const directories = viewName && window.Viewer && Viewer.config[viewName]
-            ? [Viewer.config[viewName].directory]
-            : ['md/ToDo', 'md/Shopping', 'md/Projects', 'md/Notes', 'md/Ideas', 'md/People'];
+        const directories = this.getSyncDirectories(viewName);
 
         let totalFiles = 0;
 
+        const localIdIndex = await this.buildLocalIdIndex();
         for (const directory of directories) {
             try {
                 const contents = await api.request(`/contents/${directory}`, 'GET', null, true);
@@ -249,9 +327,18 @@ class SyncManager {
                 // Fetch and save each file
                 for (const file of files) {
                     try {
-                        const content = await api.getFile(file.path);
+                        let content = await api.getFile(file.path);
+                        const ensured = MarkdownUtils.ensureFileId(content);
+                        if (ensured.changed) {
+                            content = ensured.content;
+                        }
+                        const metadata = MarkdownUtils.extractHeaderMetadata(content);
+                        if (metadata.id && localIdIndex[metadata.id] && localIdIndex[metadata.id].path !== file.path) {
+                            await LocalStorageManager.deleteFile(localIdIndex[metadata.id].path);
+                        }
                         const fileInfo = await api.request(`/contents/${file.path}`);
-                        await LocalStorageManager.saveFile(file.path, content, false, fileInfo.sha);
+                        const markDirty = ensured.changed;
+                        await LocalStorageManager.saveFile(file.path, content, markDirty, fileInfo.sha);
                         totalFiles++;
                     } catch (error) {
                         console.error(`Error loading ${file.path}:`, error);
@@ -264,6 +351,94 @@ class SyncManager {
 
         console.log(`Loaded ${totalFiles} files from GitHub to local storage`);
         return totalFiles;
+    }
+
+    /**
+     * Pull remote updates without overwriting local changes
+     * - Adds missing files
+     * - Updates clean files when GitHub SHA has changed
+     * @param {string} viewName - Optional view name to load specific directory
+     * @returns {Promise<Object>} - { added, updated }
+     */
+    static async pullLatestFromGitHub(viewName = null) {
+        if (!AppState.isOnline) {
+            if (window.UI && UI.showToast) {
+                UI.showToast('Cannot pull while offline', 'error');
+            }
+            return { added: 0, updated: 0 };
+        }
+
+        const api = new GitHubAPI(AppState.token, AppState.repo);
+        const directories = this.getSyncDirectories(viewName);
+
+        const results = { added: 0, updated: 0 };
+
+        const localIdIndex = await this.buildLocalIdIndex();
+        for (const directory of directories) {
+            try {
+                const contents = await api.request(`/contents/${directory}`, 'GET', null, true);
+                if (!contents) continue;
+
+                const files = contents.filter(item =>
+                    item.type === 'file' && item.name.endsWith('.md')
+                );
+
+                for (const file of files) {
+                    const localFile = await LocalStorageManager.getFile(file.path);
+
+                    if (!localFile) {
+                        let content = await api.getFile(file.path);
+                        const ensured = MarkdownUtils.ensureFileId(content);
+                        if (ensured.changed) {
+                            content = ensured.content;
+                        }
+                        const metadata = MarkdownUtils.extractHeaderMetadata(content);
+                        if (metadata.id && localIdIndex[metadata.id] && localIdIndex[metadata.id].path !== file.path) {
+                            const existing = localIdIndex[metadata.id].file;
+                            const preservedContent = existing ? existing.content : content;
+                            const markDirty = existing ? existing.isDirty : false;
+                            await LocalStorageManager.saveFile(file.path, preservedContent, markDirty, file.sha);
+                            if (existing) {
+                                await LocalStorageManager.deleteFile(existing.path);
+                            }
+                        } else {
+                            await LocalStorageManager.saveFile(file.path, content, ensured.changed, file.sha);
+                        }
+                        results.added++;
+                        continue;
+                    }
+
+                    if (localFile.isDirty || localFile.syncStatus === 'conflict') {
+                        continue;
+                    }
+
+                    if (localFile.githubSHA && localFile.githubSHA !== file.sha) {
+                        let content = await api.getFile(file.path);
+                        const ensured = MarkdownUtils.ensureFileId(content);
+                        if (ensured.changed) {
+                            content = ensured.content;
+                        }
+                        const metadata = MarkdownUtils.extractHeaderMetadata(content);
+                        if (metadata.id && localIdIndex[metadata.id] && localIdIndex[metadata.id].path !== file.path) {
+                            const existing = localIdIndex[metadata.id].file;
+                            const preservedContent = existing ? existing.content : content;
+                            const markDirty = existing ? existing.isDirty : false;
+                            await LocalStorageManager.saveFile(file.path, preservedContent, markDirty, file.sha);
+                            if (existing) {
+                                await LocalStorageManager.deleteFile(existing.path);
+                            }
+                        } else {
+                            await LocalStorageManager.saveFile(file.path, content, ensured.changed, file.sha);
+                        }
+                        results.updated++;
+                    }
+                }
+            } catch (error) {
+                console.error(`Error pulling directory ${directory}:`, error);
+            }
+        }
+
+        return results;
     }
 
     /**

@@ -469,17 +469,18 @@ body {
 }
 
 .checklist-item .bullet {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: var(--text-color);
     flex-shrink: 0;
     width: 16px;
+    height: 16px;
     text-align: center;
     user-select: none;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: -3px;
+    margin-top: 0;
     cursor: pointer;
     transition: transform 0.2s, color 0.2s;
 }
@@ -487,6 +488,26 @@ body {
 .checklist-item .bullet:hover {
     transform: scale(1.3);
     color: var(--primary-color);
+}
+
+.checklist-item .bullet.caret {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    transform: translateY(1px);
+    transition: transform 0.2s;
+}
+
+.checklist-item .bullet.caret.expanded {
+    transform: translateY(1px) rotate(90deg);
+}
+
+.checklist-item .bullet.caret:hover {
+    transform: translateY(1px);
+    color: var(--text-light);
+}
+
+.checklist-item .bullet.caret.expanded:hover {
+    transform: translateY(1px) rotate(90deg);
 }
 
 .checklist-text {
@@ -645,6 +666,37 @@ body {
 
 .highlight-menu.hidden {
     display: none;
+}
+
+.highlight-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.highlight-menu-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.menu-close-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.menu-close-btn:hover,
+.menu-close-btn:active {
+    background: var(--bg-color);
+    color: var(--text-color);
 }
 
 .color-row {
@@ -1308,13 +1360,34 @@ body {
     gap: 6px;
     padding: 4px 6px;
     cursor: pointer;
+    border: 2px solid var(--border-color);
     border-radius: var(--radius-sm);
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s;
     font-size: 0.85rem;
 }
 
 .file-tree-item:hover {
     background: var(--bg-color);
+}
+
+.file-tree-item.highlight-yellow {
+    background: #fff6c2;
+    border-color: #e6d88d;
+}
+
+.file-tree-item.highlight-green {
+    background: #d8f5d0;
+    border-color: #b6d9a8;
+}
+
+.file-tree-item.highlight-blue {
+    background: #d8ebff;
+    border-color: #b5cfee;
+}
+
+.file-tree-item.highlight-pink {
+    background: #ffd9ec;
+    border-color: #e6b3cf;
 }
 
 .file-tree-item .icon {
@@ -1428,8 +1501,25 @@ body {
 
 .accordion-item {
     background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     overflow: hidden;
+}
+
+.accordion-item.highlight-yellow {
+    background: #fff6c2;
+}
+
+.accordion-item.highlight-green {
+    background: #d8f5d0;
+}
+
+.accordion-item.highlight-blue {
+    background: #d8ebff;
+}
+
+.accordion-item.highlight-pink {
+    background: #ffd9ec;
 }
 
 .accordion-header {
@@ -1553,7 +1643,7 @@ body {
 
 .project-card {
     background: var(--card-bg);
-    border: 2px solid var(--border-color);
+    border: 3px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 16px;
     cursor: pointer;
@@ -1602,7 +1692,7 @@ body {
 
 .people-card {
     background: var(--card-bg);
-    border: 2px solid var(--border-color);
+    border: 3px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 16px;
     cursor: pointer;
@@ -1673,7 +1763,7 @@ body {
 .search-result-item {
     padding: 12px;
     background: var(--card-bg);
-    border: 2px solid var(--border-color);
+    border: 3px solid var(--border-color);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.2s;
